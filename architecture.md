@@ -1,476 +1,425 @@
 # Pulse: Architecture
-
 > The heartbeat of your infrastructure.
 > DBMS Laboratory (24CS305/CS3106) group mini project.
-> Status: design phase. Items marked **(open)** are pending team decisions.
-
----
-
+> This document describes the design only. SQL, schema files and application code live in the repository (`backend/drizzle/`, `backend/src/`).
 ## 1. Overview
-
-Pulse is a lightweight, developer-friendly monitoring tool. Users register websites and services as **monitors**; Pulse checks them on a schedule, records every result, opens **incidents** when something breaks, notifies the right people, and shows uptime, incidents and history on a minimal dashboard and optional public status page.
-
-**Vision:** understand what is happening across your infrastructure without unnecessary complexity.
-
+Pulse is a lightweight monitoring tool for HTTP and HTTPS sites. Users register sites as **monitors**; Pulse checks them on a schedule, records every result, opens **incidents** when something breaks, and shows status, history, uptime and response-time charts on a minimal dashboard. An opt-in, unguessable **report link** per monitor lets anyone report a problem. **Vision:** the heartbeat of your infrastructure, without unnecessary complexity.
 ### Design principles
-1. **The database is the core.** Business rules (incident open/close, SSL warnings, audit trail) live in the database as triggers, procedures, views and events, not scattered in application code.
-2. **Trustworthy alerts over more alerts.** Avoid false positives with retries, failure thresholds, cooldowns and maintenance windows.
-3. **Simple first.** Get the core loop (monitor, check, incident, report) working end to end before adding extras.
-4. **Secure by default**, especially because users can enter arbitrary URLs.
-
----
-
+(1) **The database is the core.** The incident lifecycle, the guest limit and data retention live in PostgreSQL as triggers, constraints, views, a function and a procedure, not scattered in application code. (2) **Every table earns its place.** Each table supports a feature that works end to end. (3) **Simple first.** One Express process, one in-process scheduler, no queue or broker; the core loop (monitor, health check, incident, report) works before any extra. (4) **Secure by default**, especially because users can enter arbitrary URLs: SSRF guard, server-side ownership checks, input validation.
+### Scope
+**Included**
+The core loop: **monitor, health check, incident, report**; DBMS showcase pieces: `v_monitor_status` view, uptime-summary function, incident trigger, partial unique index, `CHECK` constraints, deliberate foreign-key behaviour; SSRF safeguards, ownership checks, input validation; Search and filter, check history, response-time and uptime charts; Accounts with a guest tier (up to 2 monitors); ownership-based authorization, no RBAC; Data retention as a stored procedure; Opt-in report link per monitor for problem reports. **Not included:** admin role, WebSockets, notification channels (Discord, email, Telegram, SMS), heartbeat, blacklist, SSL-expiry and server-agent monitoring, public status page. **Deferred** (architecture stays extensible): alert notifications, maintenance windows, SSL expiry checks, more monitor types, multi-region probes, public status page. Pulse uses **6 tables** (5 domain tables plus the session store).
 ## 2. Technology Stack
-
-| Layer | Choice | Notes |
-|---|---|---|
-| Database | **MariaDB 10.6+** | Needs modern `CHECK` support, triggers, events |
-| Backend | **Python 3 + Flask** (assumed) | Any approved stack works; Flask suits a background checker |
-| DB connector | `mysql-connector-python` (or `mariadb`) | Parameterized queries only |
-| Frontend | HTML, CSS, JavaScript (Jinja2 templates) | Polling for live updates |
-| HTTP checks | `requests` | Timeouts, redirects, TLS info |
-| Ping / port checks | `socket`, system `ping` | |
-| DNS blacklist checks | `dnspython` | DNSBL lookups via a local resolver on the VM |
-| Server agent | Python + `psutil` | Collects CPU, RAM, disk, network, service state; pushes over HTTPS |
-| Notifications | Discord webhooks | Colour-coded embeds |
-| App server | Gunicorn behind **Nginx** | Production on the VM |
-| Process manager | `systemd` | Web app and checker as separate services |
-| Hosting | **VM (Ubuntu)** | Local fallback for the lab demo |
-| Version control | Git + GitHub (private repo) | |
-
----
-
-## 3. System Architecture
-
-```
-                         +------------------------------+
-   Browser  ---HTTPS--->  |  Nginx (reverse proxy, TLS)  |
- (dashboard, status page) +--------------+---------------+
-                                         |
-                                         v
-                         +------------------------------+
-                         |   Flask web app (Gunicorn)   |
-                         |  auth, CRUD, reports, JSON   |
-                         +--------------+---------------+
-                                         |  SQL (parameterized)
-                                         v
-   +-------------------+     +------------------------------+
-   |  Checker service  |---->|           MariaDB            |
-   |  (scheduler +     |     |  tables, views, triggers,    |
-   |   probe workers)  |     |  procedures, events          |
-   +---------+---------+     +--------------^---------------+
-             |                              |
-             v                              |
-   Monitored targets           +------------+-------------+
-   (websites, hosts, ports)    |   Alert dispatcher       |
-                               |  reads new incidents,    |
-                               |  sends notifications,    |
-                               |  logs delivery           |
-                               +--------------------------+
-```
-
-### Components
-
-**Web app (Flask)**
-- Authentication (Admin / User roles), session handling
-- CRUD for monitors, alert contacts, maintenance windows, status pages
-- Dashboard, incident list, uptime reports, SSL and blacklist views
-- **Charts** (response time, uptime, status timeline, incidents) drawn with Chart.js from JSON endpoints
-- **Report a problem** form on the public status page, plus a triage screen for owners and admins
-- JSON endpoints (`/api/...`) polled by the dashboard
-- Public status page (no login)
-- **Instant check** endpoint: enter any URL, get a result immediately, optionally save it as a monitor
-
-**Checker service (separate process)**
-- Scheduler loop selects monitors that are due (`last_check + interval <= now`, active, not in maintenance)
-- Worker pool runs checks concurrently (`ThreadPoolExecutor`)
-- **Confirmation retries:** a failed check is retried a couple of times a few seconds apart before a failure is recorded
-- Writes `check_result` rows; the database trigger takes it from there
-- Periodic jobs: SSL expiry checks (daily), blacklist checks (hourly), **heartbeat sweep** (flags monitors whose expected ping did not arrive)
-
-**Alert dispatcher (separate process or thread)**
-- Finds incidents or recoveries not yet notified
-- Sends to each linked contact as a **Discord webhook** message (colour-coded embed: red down, amber degraded, green recovered)
-- Respects per-contact **cooldown**; writes every attempt to `alert_log`, including failures
-
-**Server agent (installed on each machine to be monitored)**
-- Small Python script using `psutil`; runs as a systemd service or cron job
-- Every minute it collects CPU, RAM, disk, network and selected service states, then POSTs them to `/api/agent/report` with a secret token
-- Pulse installs its own agent on the VM so it monitors itself; a laptop or second machine can run the agent for the demo
-
-**Heartbeat endpoint**
-- `/api/heartbeat/<token>` receives pings from cron jobs and scheduled tasks; silence beyond the grace period becomes an incident
-
-**Database (MariaDB)**
-- Source of truth and rule engine (section 5)
-
----
-
-## 4. Data Model
-
-### 4.1 Tables
-
-Tables are grouped by tier. **Core** tables are built first; the rest follow the roadmap.
-
-**Core**
-
-| Table | Purpose | Key columns |
-|---|---|---|
-| `user` | Accounts | user_id PK, username UNIQUE, email UNIQUE, password_hash, role CHECK(admin/user) |
-| `monitor_type` | HTTP, PING, PORT, HEARTBEAT, SERVER | type_id PK, name UNIQUE |
-| `monitor` | What is watched | monitor_id PK, user_id FK, type_id FK, name, target, port, interval_sec, timeout_ms, failure_threshold, expected_status, expected_keyword, degraded_ms, is_active |
-| `check_result` | Every check | result_id PK, monitor_id FK, node_id FK, checked_at, status (up/down/degraded), http_code, response_ms, error_msg |
-| `incident` | Outages | incident_id PK, monitor_id FK, started_at, resolved_at, status, severity, source (check/heartbeat/server/ssl/blacklist/report), cause, notes |
-| `alert_contact` | Who to notify | contact_id PK, user_id FK, channel (discord), destination (webhook URL) |
-| `monitor_alert` | M:N monitors and contacts | PK (monitor_id, contact_id), cooldown_min |
-| `alert_log` | Notification history | alert_id PK, incident_id FK, contact_id FK, sent_at, delivery_status |
-| `probe_node` | Where checks run from | node_id PK, name, location, is_active |
-
-**Extended**
-
-| Table | Purpose |
+| Layer | Choice |
 |---|---|
-| `ssl_check` | Certificate expiry per monitor (expires_on, issuer, days_left) |
-| `maintenance_window` | Planned downtime (monitor_id, starts_at, ends_at, reason) |
-| `blacklist_provider` | DNSBL zones to query |
-| `blacklist_result` | Listed or not, per monitor and provider |
-| `heartbeat_config` | Subtype of `monitor`: token_hash, expected_every_sec, grace_sec |
-| `heartbeat_ping` | Each ping received (monitor_id FK, received_at) |
-| `server_agent` | Subtype of `monitor`: token_hash, hostname, os, last_seen |
-| `server_metric` | Samples from the agent (agent/monitor FK, collected_at, cpu_pct, ram_pct, disk_pct, load, net_in, net_out) |
-| `server_alert_rule` | Thresholds per agent (metric, operator, threshold, consecutive_samples) |
-| `status_page` | Public page (slug, title, is_public) |
-| `status_page_monitor` | M:N pages and monitors |
-| `daily_summary` | Rolled-up stats per monitor per day (uptime %, avg ms, counts) |
-| `audit_log` | Who changed what and when |
-| `problem_report` | Problems reported by visitors or users (monitor_id FK, status_page_id FK, reporter_name, reporter_email, category, description, ip_hash, status, incident_id FK nullable, created_at) |
+| Frontend | React, Vite, Tailwind CSS, React Router, Recharts (history charts only), TypeScript |
+| Backend | Node.js, Express, TypeScript (`tsx` in dev, `tsc` for build) |
+| ORM and migrations | Drizzle ORM, Drizzle Kit |
+| Database | PostgreSQL, accessed through the `pg` driver |
+| Auth | Server-side sessions (`express-session` with `connect-pg-simple`, so no Redis), Argon2id password hashing (bcrypt is the fallback if native install fails on some machines) |
+| Validation | `zod` on the backend, light validators on the frontend |
+| Testing | Vitest and Supertest (API and lifecycle), plain SQL scripts for DB objects |
 
-### 4.2 ER Diagram (draft)
+Not used: Prisma, Sequelize, Knex, TypeORM, Flask, Python, a second ORM, Redis, message brokers, microservices, Kubernetes, external agents, cloud services.
+## 3. System Architecture
+### 3.1 System diagram
+```
+ Browser (React SPA)
+      |  JSON over HTTP, session cookie
+      v
+ +--------------------------------------------------------------+
+ |  Express application (single process)                        |
+ |   middleware: session, origin check, rate limit, validation  |
+ |   routes -> controllers -> services -> db/queries            |
+ |   health/ : ssrfGuard, checker, scheduler (setInterval)      |
+ +-------------------------+------------------------------------+
+                           |  Drizzle + pg (parameterized SQL)
+                           v
+ +--------------------------------------------------------------+
+ |  PostgreSQL                                                  |
+ |   tables + constraints   views   function/procedure          |
+ |   triggers: incident lifecycle, guest monitor limit          |
+ |   user_sessions (session store)                              |
+ +--------------------------------------------------------------+
 
+ Monitored targets: real HTTP/HTTPS sites, or the local demo target (port 4100)
+ Public visitors: report page for one monitor, reached through its report link
+```
+### 3.2 Who owns what (no duplicated logic)
+| Concern | Express service | PostgreSQL |
+|---|---|---|
+| Validate input, authenticate, authorize ownership | Yes | No |
+| SSRF guard, perform the HTTP request, measure time | Yes | No |
+| Record a check result | **Only writer** of `health_checks` (a single INSERT) | Constraints validate the row |
+| **Incident lifecycle** (open, deduplicate, resolve) | **Never writes `incidents`** | **Sole owner**, via trigger on `health_checks` |
+| Problem reports | Validates, rate-limits, stores | Constraints; `recent_reports_15m` computed in `v_monitor_status` |
+| Guest limit of 2 monitors | Maps the error to HTTP 403 | **Authoritative**, via trigger |
+| Current status, last check, durations, uptime | Reads views and function | Computes them (views, function) |
+| Data retention | Calls the procedure on a schedule | Procedure deletes old rows |
+
+Rule for code review: application code contains no `INSERT`, `UPDATE` or `DELETE` on `incidents` (cascade deletes from `monitors` and `users` aside). A lifecycle integration test enforces the behaviour.
+### 3.3 Users and access levels
+| State | Created by | Can do |
+|---|---|---|
+| Anonymous (no session) | N/A | See login, register and "Continue as guest" |
+| Public visitor (no session) | A monitor's report link | Submit a problem report for that one monitor, nothing else |
+| **Guest** | `POST /api/auth/guest` | Full monitor features on **at most 2 monitors**; data is temporary |
+| **Registered** | `POST /api/auth/register` | Full monitor features; account page (profile, password change, delete account) |
+
+A guest is a real row in `users` with `is_guest = true` and no email or password. This keeps one ownership model: every monitor has a non-null `owner_id`. Registering from a guest session **upgrades that same row** inside a transaction, so the guest's monitors and history are kept. Stale guests are removed by a scheduled `DELETE` (guests older than 7 days).
+### 3.4 REST API summary
+Base path `/api`, JSON in and out, session cookie `pulse.sid`. Success bodies use camelCase; lists return items, page, pageSize and total (default page size 20, max 100). Errors carry a code, a message and optional field details. Another user's resource returns **404**, not 403, so existence is not leaked.
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `VALIDATION_ERROR` | 422 | Body or query failed validation (`details` lists fields) |
+| `URL_NOT_ALLOWED` | 422 | URL blocked by the SSRF guard |
+| `UNAUTHENTICATED` | 401 | No valid session |
+| `INVALID_CREDENTIALS` | 401 | Wrong email or password (same message for both) |
+| `NOT_FOUND` | 404 | Missing, or owned by someone else |
+| `EMAIL_TAKEN` | 409 | Email already registered |
+| `DUPLICATE_URL` | 409 | Owner already monitors this URL |
+| `GUEST_LIMIT_REACHED` | 403 | Guest already has 2 monitors; register to add more |
+| `RATE_LIMITED` | 429 | Too many requests |
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `POST /auth/register` | none or guest | Create account; upgrades a guest session in place |
+| `POST /auth/login`, `POST /auth/logout` | none, session | Log in and out |
+| `POST /auth/guest`, `GET /auth/me` | none, session | Start a guest session; current user (`monitorLimit` is 2 for guests, null otherwise) |
+| `PATCH /account`, `POST /account/password`, `DELETE /account` | session | Profile, password change, delete account |
+| `GET /monitors`, `POST /monitors` | session | List (`search`, `status`, paging); create (403 `GUEST_LIMIT_REACHED` at 2 for guests) |
+| `GET/PATCH/DELETE /monitors/:id` | session | Read, edit, delete (owner only) |
+| `POST /monitors/:id/check` | session | Manual check (10 per minute per user) |
+| `GET /monitors/:id/history` | session | Check history, filter by result and date |
+| `GET /monitors/:id/summary` | session | Uptime summary for 24h, 7d or 30d from `fn_monitor_uptime_summary` |
+| `GET /monitors/:id/response-times` | session | Chart buckets (hour or day) |
+| `POST/DELETE /monitors/:id/report-link` | session | Enable or rotate / disable the report link |
+| `GET /problem-reports`, `PATCH /problem-reports/:id` | session | List; triage (`acknowledged`, `resolved`, `dismissed`) |
+| `GET/POST /public/report/:token` | none | Monitor name and status; submit a report (honeypot field `website` must be empty) |
+| `GET /incidents` | session | Incidents from `v_incident_details`, filter by status and monitor |
+| `GET /dashboard`, `GET /health` | session, none | Dashboard totals; liveness plus DB round trip |
+
+Rules: public submissions are limited to 5 per hour per IP and 30 per hour per token; unknown and disabled tokens give the same 404; the public page exposes only the monitor name and its up or down status. Every query that touches a monitor, check, incident or report includes the owner (`monitors.owner_id = :currentUserId`) or reads from a view filtered by `owner_id`; a route never trusts an id alone.
+## 4. Data Model
+### 4.1 Relational schema
+```
+users(id PK, email UNIQUE NULL, display_name NULL, password_hash NULL, is_guest NOT NULL DEFAULT false, created_at NOT NULL DEFAULT now(), last_login_at NULL)
+monitors(id PK, owner_id FK -> users.id ON DELETE CASCADE, name NOT NULL, url NOT NULL, check_interval_seconds NOT NULL DEFAULT 60, report_token UNIQUE NULL, created_at, updated_at, UNIQUE(owner_id, url))
+health_checks(id PK, monitor_id FK -> monitors.id ON DELETE CASCADE, checked_at NOT NULL DEFAULT now(), is_successful NOT NULL, status_code NULL, response_time_ms NULL, error_summary NULL, trigger_source NOT NULL DEFAULT 'scheduled')
+incidents(id PK, monitor_id FK -> monitors.id ON DELETE CASCADE, status NOT NULL DEFAULT 'open', started_at NOT NULL DEFAULT now(), resolved_at NULL)
+problem_reports(id PK, monitor_id FK -> monitors.id ON DELETE CASCADE, category NOT NULL, description NOT NULL, reporter_email NULL, status NOT NULL DEFAULT 'new', created_at NOT NULL DEFAULT now())
+user_sessions(sid PK, sess NOT NULL, expire NOT NULL)
+```
+### 4.2 ER diagram
 ```mermaid
 erDiagram
-    USER ||--o{ MONITOR : owns
-    USER ||--o{ ALERT_CONTACT : has
-    USER ||--o{ STATUS_PAGE : publishes
-    MONITOR_TYPE ||--o{ MONITOR : classifies
-    MONITOR ||--o{ CHECK_RESULT : produces
-    PROBE_NODE ||--o{ CHECK_RESULT : runs
-    MONITOR ||--o{ INCIDENT : triggers
-    MONITOR ||--o{ SSL_CHECK : has
-    MONITOR ||--o| HEARTBEAT_CONFIG : "heartbeat details"
-    MONITOR ||--o{ HEARTBEAT_PING : receives
-    MONITOR ||--o| SERVER_AGENT : "server details"
-    SERVER_AGENT ||--o{ SERVER_METRIC : reports
-    SERVER_AGENT ||--o{ SERVER_ALERT_RULE : "has rules"
-    MONITOR ||--o{ MAINTENANCE_WINDOW : scheduled
-    MONITOR ||--o{ BLACKLIST_RESULT : scanned
-    BLACKLIST_PROVIDER ||--o{ BLACKLIST_RESULT : reports
-    MONITOR ||--o{ DAILY_SUMMARY : summarized
-    MONITOR }o--o{ ALERT_CONTACT : "notifies (monitor_alert)"
-    STATUS_PAGE }o--o{ MONITOR : "shows (status_page_monitor)"
-    INCIDENT ||--o{ ALERT_LOG : notifies
-    MONITOR ||--o{ PROBLEM_REPORT : "reported against"
-    STATUS_PAGE ||--o{ PROBLEM_REPORT : receives
-    INCIDENT |o--o{ PROBLEM_REPORT : "linked to"
-    ALERT_CONTACT ||--o{ ALERT_LOG : receives
+    USERS ||--o{ MONITORS : owns
+    MONITORS ||--o{ HEALTH_CHECKS : "has results"
+    MONITORS ||--o{ INCIDENTS : "has incidents"
+    MONITORS ||--o{ PROBLEM_REPORTS : receives
+
+    USERS {
+        int id PK
+        varchar email UK "NULL for guests"
+        varchar display_name
+        text password_hash "NULL for guests"
+        boolean is_guest
+        timestamptz created_at
+        timestamptz last_login_at
+    }
+    MONITORS {
+        int id PK
+        int owner_id FK
+        varchar name
+        varchar url
+        int check_interval_seconds
+        varchar report_token UK "NULL means reports off"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    HEALTH_CHECKS {
+        bigint id PK
+        int monitor_id FK
+        timestamptz checked_at
+        boolean is_successful
+        int status_code "NULL if no response"
+        int response_time_ms "NULL if no response"
+        varchar error_summary "NULL on success"
+        varchar trigger_source "scheduled or manual"
+    }
+    INCIDENTS {
+        int id PK
+        int monitor_id FK
+        varchar status "open or resolved"
+        timestamptz started_at
+        timestamptz resolved_at "NULL while open"
+    }
+    PROBLEM_REPORTS {
+        int id PK
+        int monitor_id FK
+        varchar category "down, slow, error, other"
+        varchar description
+        varchar reporter_email "optional"
+        varchar status "new, acknowledged, resolved, dismissed"
+        timestamptz created_at
+    }
+    USER_SESSIONS {
+        varchar sid PK
+        json sess
+        timestamp expire
+    }
 ```
-
-### 4.3 Normalization notes (for the report)
-- All tables are in **3NF**: no repeating groups, every non-key attribute depends on the whole key and nothing but the key.
-- `monitor_type` and `probe_node` are separate lookup tables to avoid repeating values and update anomalies.
-- Many-to-many relationships use junction tables (`monitor_alert`, `status_page_monitor`).
-- **Supertype/subtype pattern:** every watched thing is a `monitor`; type-specific details live in 1:1 extension tables (`heartbeat_config`, `server_agent`). Incidents, alerts, maintenance windows and status pages therefore work the same for every monitor type, and no table is full of NULLs.
-- `daily_summary` is intentionally **derived/denormalized** for performance (a rollup, rebuilt by a procedure); document it as a deliberate trade-off.
-
+`USER_SESSIONS` is infrastructure for `express-session`; it deliberately has no foreign key (the user id lives inside the session JSON). Cardinality: one user owns many monitors; one monitor has many health checks, incidents and problem reports (at most one incident open at a time).
+### 4.3 Normalization to 3NF (for the report)
+#### 4.3.1 Approach
+**1NF:** every column is atomic; no repeating groups (a monitor's checks and incidents are rows in their own tables, not arrays or columns); **2NF:** every table has a single-column surrogate primary key, so no partial dependencies are possible; **3NF:** no non-key attribute depends on another non-key attribute.
+#### 4.3.2 Functional dependencies
+| Table | Dependencies | 3NF? |
+|---|---|---|
+| `users` | `id` determines all columns; `email` determines `id` (candidate key) | Yes |
+| `monitors` | `id` determines all columns; `(owner_id, url)` is a candidate key | Yes |
+| `health_checks` | `id` determines all columns | Yes |
+| `incidents` | `id` determines all columns | Yes, see 4.3.4 |
+| `problem_reports` | `id` determines all columns | Yes |
+| `user_sessions` | `sid` determines `sess`, `expire` | Yes |
+#### 4.3.3 Derived data is not stored
+Current status, last check time, last response time, open-incident flag, recent report count, incident duration, failed-check counts, uptime percentage and min/avg/max response times are all **computed** by views and a function. Storing them (for example `monitors.last_status` or `monitors.last_checked_at`) would create update anomalies, so the design avoids it.
+#### 4.3.4 Two deliberate, guarded redundancies (to explain in the viva)
+`incidents.status` is determined by whether `resolved_at` is null. The project specification asks the incident to record its status, and a status column gives readable filtering and a clean partial index. The lifecycle `CHECK` makes divergence impossible; `users.is_guest` is determined by whether `email` is null. A boolean is clearer to query and to index; the guest-shape `CHECK` keeps the two in lockstep. `health_checks.is_successful` is a recorded fact (the policy applied at check time), not a recomputable value, so it is not a redundancy.
+#### 4.3.5 Decisions that avoid anomalies
+Incidents do **not** store foreign keys to the opening or resolving check. Because the incident's monitor would then be derivable from two places, it could drift. Instead, the failed checks belonging to an incident are found by a time-range join (`v_incident_details`); No lookup tables for statuses; a `CHECK` list is simpler and migrates more easily than a PostgreSQL enum.
 ### 4.4 Constraints plan
-- **PRIMARY KEY / FOREIGN KEY** on every relationship (`ON DELETE CASCADE` for child history, `RESTRICT` where history must be kept)
-- **NOT NULL** on required fields
-- **UNIQUE:** username, email, status page slug, (monitor, node, checked_at)
-- **CHECK:** `interval_sec >= 30`, `timeout_ms BETWEEN 500 AND 60000`, `failure_threshold >= 1`, `port BETWEEN 1 AND 65535`, `role IN ('admin','user')`, `ends_at > starts_at`
-- **DEFAULT:** `is_active = 1`, `interval_sec = 60`, `failure_threshold = 2`, timestamps `CURRENT_TIMESTAMP`
+#### 4.4.1 Constraints and deletion behaviour
+| Table | Constraint | Purpose |
+|---|---|---|
+| `users` | `CHECK` guest shape: guest rows have no email or password; registered rows have both and a display name | One row type cannot masquerade as the other |
+| `users` | `CHECK (email = lower(email))`, `UNIQUE (email)` | Case-insensitive unique email |
+| `monitors` | `UNIQUE (owner_id, url)` | No duplicate URL per owner |
+| `monitors` | `CHECK` interval between 30 and 3600; `CHECK` URL starts with `http://` or `https://`; `CHECK` name not blank | Defence in depth behind API validation |
+| `health_checks` | `CHECK` status code null or 100 to 599; response time null or >= 0 | Valid measurements |
+| `health_checks` | `CHECK` success has no error text and failure has error text | Consistent outcome |
+| `health_checks` | `CHECK` trigger source in (`scheduled`, `manual`) | Controlled vocabulary |
+| `incidents` | `CHECK` status in (`open`, `resolved`) | Controlled vocabulary |
+| `incidents` | `CHECK` lifecycle: open means `resolved_at` is null; resolved means `resolved_at` is set and >= `started_at` | Status and timestamp can never disagree |
+| `incidents` | **Partial unique index** on `(monitor_id) WHERE status = 'open'` | **At most one open incident per monitor, enforced by the database** |
+| `monitors` | `UNIQUE (report_token)` | Report links cannot collide |
+| `problem_reports` | `CHECK` category in (`down`, `slow`, `error`, `other`); `CHECK` status in (`new`, `acknowledged`, `resolved`, `dismissed`); `CHECK` description length 10 to 1000 | Controlled values, no empty reports |
 
----
+Foreign-key behaviour is deliberate: deleting a user cascades to their monitors; deleting a monitor cascades to its checks, incidents and problem reports. Nothing uses `SET NULL`, because no table keeps history that should outlive its parent.
+#### 4.4.2 Indexes
+| Index | Reason |
+|---|---|
+| `monitors (owner_id, url)` unique | Duplicate prevention; also serves owner-scoped lookups, so no separate owner index |
+| `health_checks (monitor_id, checked_at DESC)` | Latest check per monitor, history pages, charts, scheduler |
+| `incidents (monitor_id, started_at DESC)` | Incident list per monitor |
+| `incidents (monitor_id) WHERE status = 'open'` unique | Rule enforcement and fast open-incident lookup |
+| `problem_reports (monitor_id, created_at DESC)` | Report lists and the 15-minute count |
+| `user_sessions (expire)` | Session pruning |
 
+Text search uses `ILIKE`, which is fine at this scale. A `pg_trgm` index is an optional future step and is not required.
+### 4.5 ORM: Drizzle
+Drizzle schema files (`backend/src/db/schema.ts`) are the **single source of truth for tables, constraints and indexes** and mirror 4.1 and 4.4 one to one, including the partial unique index and the lifecycle `CHECK` on `incidents`. Views are created by SQL migrations and are only mapped for typing (`pgView(...).existing()`), so Drizzle never tries to create or drop them.
+
+| Use | Tool |
+|---|---|
+| Ordinary CRUD, simple filters | Drizzle query builder |
+| Nested reads | Drizzle relational queries |
+| Aggregates, `GROUP BY`/`HAVING`, chart buckets, view and function calls | Explicit parameterized SQL through Drizzle's `sql` template |
+| Transactions | `db.transaction` |
+
+All explicit SQL lives in `backend/src/db/queries/*.ts`, one function per query, each with a comment explaining it. That folder is the **query catalogue** (section 5.5).
+### 4.6 Migration strategy
+One folder, `backend/drizzle/`, one ordered journal, applied by `drizzle-kit migrate`. **Generated** files (`drizzle-kit generate`, a diff of `schema.ts`) hold tables, constraints and indexes; **custom SQL** files (`drizzle-kit generate --custom`) hold views, functions, procedures and triggers.
+
+| File | Kind | Content |
+|---|---|---|
+| `0000_init_tables.sql` | Generated | 6 tables, constraints, partial unique index, other indexes |
+| `0001_views.sql` | Custom | `v_monitor_status`, `v_incident_details` |
+| `0002_functions_procedures.sql` | Custom | `fn_monitor_uptime_summary`, `fn_guest_monitor_limit`, `sp_purge_old_checks` |
+| `0003_triggers.sql` | Custom | Incident lifecycle trigger, guest limit trigger |
+
+Rules that prevent drift:
+Tables, constraints and indexes change only in `schema.ts`, then are generated; never hand-write `ALTER TABLE` in a custom migration; Views, functions, procedures and triggers change only in custom migrations; never edit an applied migration, add a new one with `CREATE OR REPLACE`; Never use `drizzle-kit push` on shared databases; run `drizzle-kit check` before merging; The application never alters schema at runtime; a startup check fails fast if migrations are not applied.
 ## 5. Database Logic
-
-### 5.1 Triggers
+These objects are created by the custom SQL migrations (section 4.6). Each has a job; none exists only to satisfy a checklist.
+### 5.1 Triggers (`0003_triggers.sql`)
 | Trigger | Fires | Behaviour |
 |---|---|---|
-| `trg_check_result_ai` | AFTER INSERT on `check_result` | If the last *N* results (N = monitor's `failure_threshold`) are all `down` and no open incident exists, **open an incident**. If result is `up` and an incident is open, **close it**. Skips monitors inside a maintenance window. |
-| `trg_ssl_check_ai` | AFTER INSERT on `ssl_check` | Flag or raise a warning incident when `days_left` is below 14 |
-| `trg_server_metric_ai` | AFTER INSERT on `server_metric` | Evaluate the agent's `server_alert_rule`s; after N consecutive breaching samples open an incident (source `server`, e.g. "Disk 95% above 90%"); close when back to normal |
-| `trg_blacklist_result_ai` | AFTER INSERT on `blacklist_result` | If newly listed, open a warning incident (source `blacklist`); close when delisted |
-| `trg_monitor_au` / `_ad` | AFTER UPDATE/DELETE on `monitor` | Write to `audit_log` |
-| `trg_problem_report_ai` | AFTER INSERT on `problem_report` | If 3 or more reports arrive for a monitor within 15 minutes and no incident is open, raise a **"possible outage" warning incident** (catches cases where the checker says up but users say down) |
-| `trg_maintenance_bi` | BEFORE INSERT on `maintenance_window` | Reject overlapping windows for the same monitor |
-
-### 5.2 Views
-- `v_monitor_status`: latest status, response time and open incident per monitor (dashboard)
-- `v_public_status`: safe subset for status pages (no internal fields)
-- `v_incident_summary`: incidents with duration, monitor, severity
-- `v_chart_response_time`, `v_chart_daily_uptime`: shaped data feeding the charts
-
-### 5.3 Stored procedures and functions
-- `sp_uptime_report(monitor_id, from, to)`: uptime %, avg/min/max response, incident count
-- `sp_rollup_daily(date)`: builds `daily_summary`
-- `sp_purge_old_results(days)`: deletes raw `check_result` older than the retention period
-- `fn_uptime_pct(monitor_id, from, to)`: reusable function used by reports
-- `sp_report_stats(monitor_id, days)`: report counts per category and status
-
-### 5.4 Events (MariaDB event scheduler)
-- `ev_daily_rollup`: runs `sp_rollup_daily` nightly
-- `ev_purge`: runs `sp_purge_old_results` weekly
-
-(Enable with `SET GLOBAL event_scheduler = ON;` and persist in the server config.)
-
-### 5.5 Report queries (JOIN + aggregates + GROUP BY)
-- Uptime %, average response time and incident count per monitor, grouped by monitor type
-- Top 5 slowest monitors this week
-- Mean time to resolve (MTTR) per monitor
-- Incidents per day for a date range
-
----
-
+| `trg_health_checks_incident_lifecycle` | AFTER INSERT on `health_checks`, per row | **Failed check:** open an incident for the monitor unless one is already open (the partial unique index makes this race-free; a conflict is ignored). **Successful check:** resolve the monitor's open incident, setting `resolved_at` to the check time but never earlier than `started_at`, so out-of-order timestamps are safe. This is the **only** place `incidents` is written. |
+| `trg_monitors_guest_limit` | BEFORE INSERT on `monitors`, per row | Locks the owner's `users` row so two simultaneous inserts cannot both slip under the limit. If the owner is a guest and already has `fn_guest_monitor_limit()` (2) monitors, it raises an error with SQLSTATE `GL001`. The API checks both the error and its cause (Drizzle may wrap driver errors) and returns HTTP 403 `GUEST_LIMIT_REACHED`. |
+### 5.2 Views (`0001_views.sql`)
+| View | Contents | Used by |
+|---|---|---|
+| `v_monitor_status` | One row per monitor: its latest check (id, time, status code, response time, error), derived `current_status` (`unknown`, `up` or `down`), `has_open_incident`, open-incident start time, and `recent_reports_15m` (non-dismissed problem reports in the last 15 minutes). The latest check comes from a `LATERAL` subquery; the open incident from a `LEFT JOIN` that yields at most one row because of the partial unique index. | Dashboard, monitor list, scheduler |
+| `v_incident_details` | One row per incident with monitor name, URL and owner, duration in seconds (up to now while open), number of failed checks during the incident and the first error. Failed checks are found by a time-range `LATERAL` join on `health_checks`, so incidents need no foreign keys to checks. | Incident list |
+### 5.3 Functions and procedure (`0002_functions_procedures.sql`)
+| Object | Kind | Behaviour |
+|---|---|---|
+| `fn_monitor_uptime_summary(monitor, from, to)` | SQL function, `STABLE` | Returns total checks, successful checks, uptime %, average, minimum and maximum response time (successful checks only) and incident count for one monitor over a window, using aggregates with `FILTER`. The API checks ownership before calling it. |
+| `fn_guest_monitor_limit()` | SQL function, `IMMUTABLE` | Returns 2; single source of truth read by the guest-limit trigger and by the API for display. |
+| `sp_purge_old_checks(days)` | Procedure (`CALL`) | Deletes `health_checks` older than the retention period; refuses values below 7 days. |
+### 5.4 Scheduled jobs
+PostgreSQL has no event scheduler in this design. The in-process scheduler tick (every 15 seconds) selects due monitors. A daily tick calls the procedure `sp_purge_old_checks` with a 30-day retention and deletes guest users older than 7 days.
+### 5.5 Query catalogue (explicit SQL, each explainable in the viva)
+| Query | Purpose | SQL concepts |
+|---|---|---|
+| Dashboard totals | Monitors, up, down, unknown and open incidents for one user | Aggregate over a view, `COUNT ... FILTER` |
+| Search and filter | Monitors by name or URL text and by status, paged | Parameterized, owner-scoped, `ILIKE` |
+| Recent activity | Latest 10 checks across a user's monitors | `JOIN` |
+| Chart buckets | Average, min, max response, checks, failures and uptime % per hour or day | `GROUP BY`, `date_trunc` (unit whitelisted in code), `FILTER` |
+| Repeated incidents | Monitors with 2 or more incidents in 30 days and average minutes to resolve | `JOIN`, `GROUP BY`, `HAVING` |
+| Due monitors | Up to 50 monitors never checked or past their interval, oldest first | View, `NULLS FIRST` ordering |
+| Uptime summary | Uptime and response statistics for one monitor over a window | Function call |
+| Report clusters | Monitors with 3 or more non-dismissed reports in 24 hours, with the number of "down" reports | `JOIN`, `GROUP BY`, `HAVING`, `FILTER` |
+| New-report badge | Count of reports with status `new` for the owner | `JOIN`, `COUNT` |
+### 5.6 Transactions (multi-step operations)
+| Operation | Steps inside one transaction |
+|---|---|
+| **Run a check** | Insert `health_checks` row (trigger updates incidents), then read back `v_monitor_status` and the open incident, so the response is one consistent snapshot. The HTTP request itself runs **before** the transaction. |
+| **Register from a guest session** | Lock the guest row, verify it is still a guest, verify the email is free, `UPDATE users` (email, name, hash, `is_guest = false`). Monitors are kept automatically. Regenerate the session after commit. |
+| **Delete account** | Verify password, delete from `user_sessions` where `sess->>'userId'` matches, then `DELETE FROM users` (cascades to monitors, checks, incidents, reports). |
 ## 6. Key Flows
-
 ### 6.1 Scheduled check
-1. Checker selects due monitors (active, not in maintenance).
-2. For each, a worker performs the check (HTTP/ping/port) with the monitor's timeout.
-3. On failure, retry up to 2 times with a short delay.
-4. Classify: `up`, `degraded` (slow, above `degraded_ms`), or `down` (error, wrong status, missing keyword).
-5. Insert into `check_result`.
-6. `trg_check_result_ai` opens or closes an incident.
-7. Alert dispatcher notices the change and notifies contacts, respecting cooldown, and logs to `alert_log`.
+(1) Every 15 seconds the scheduler selects due monitors (`v_monitor_status` where last check is null or older than the interval), at most 50. (2) Skips monitors already being checked (in-memory set), runs at most 5 at a time. (3) Same steps 2 to 4 as above, with `trigger_source = 'scheduled'`. No DB transaction is held open during the network call.
+### 6.2 Manual check
+Endpoint: `POST /api/monitors/:id/check`
 
-### 6.2 Instant check (any URL)
-1. Authenticated user enters a URL on the dashboard.
-2. Backend validates and normalizes the URL, resolves DNS, **rejects private/internal addresses**, then performs one check.
-3. Result is returned as JSON and shown at once.
-4. "Save as monitor" inserts it into `monitor`; from then on it follows flow 6.1.
-
-### 6.3 Dashboard updates
-Dashboard polls `/api/status` every 10 to 30 seconds and refreshes the table without reloading. No WebSockets needed.
-
-### 6.4 Charts
-Charts are drawn in the browser with **Chart.js**. The backend serves JSON from views and the rollup table, so the heavy work stays in SQL.
-
-| Chart | Type | Data source |
-|---|---|---|
-| Response time, last 24h / 7d | Line | `check_result` (aggregated into buckets for long ranges) |
-| Daily uptime %, last 30/90 days | Bar | `daily_summary` |
-| Status timeline strip (green/amber/red blocks) | Custom bar | `check_result` or `incident` |
-| Incidents per day | Bar | `v_incident_summary` |
-| Uptime by monitor type | Doughnut or bar | grouped report query |
-| Response time by node | Multi-line | `check_result` grouped by `probe_node` |
-
-Endpoints (examples): `/api/monitors/<id>/response-times?range=24h`, `/api/monitors/<id>/uptime?days=30`. The public status page shows a 90-day uptime bar per monitor.
-
-For long date ranges, query `daily_summary` instead of raw rows so charts stay fast.
-
-### 6.5 Report a problem
-Two entry points, one table (`problem_report`):
-
-1. **Public status page:** a visitor clicks "Report a problem", picks the affected service, a category (down, slow, error message, other), adds a description and optional email. No login needed.
-2. **Logged-in users:** same form from the dashboard.
-
-Flow:
-1. Form is validated (required fields, length limits, email format) and **rate-limited per IP** (a hashed IP is stored, not the raw address).
-2. Row is inserted with status `new`.
-3. `trg_problem_report_ai` checks for a cluster of reports; if found, it raises a "possible outage" warning incident.
-4. The monitor's owner is notified through the normal alert path.
-5. Owner or admin triages: `acknowledged`, `linked` to an incident, or `dismissed`. Resolved incidents can notify reporters who left an email.
-
-Report ideas: reports per monitor, reports per category, average time to acknowledge.
-
-### 6.6 HetrixTools detection model, and how Pulse follows it
-
-HetrixTools works in four steps: **send a check, inspect the response, compare with expected behaviour, notify**, repeating checks where useful to cut false alarms. Pulse follows the same pipeline:
-
-| Step | HetrixTools | Pulse |
-|---|---|---|
-| 1. Send a check | Periodic HTTP/HTTPS (or ping/port) request, every minute | Checker picks due monitors and sends the request |
-| 2. Inspect | Status code, connection result, response time | Stored in `check_result` (http_code, response_ms, error_msg) |
-| 3. Compare | Timeout, connect failure or unexpected result is a problem; checks may repeat | Compared with `expected_status`, `expected_keyword`, `timeout_ms`, `degraded_ms`; confirmation retries; `failure_threshold` consecutive failures |
-| 4. Notify | Alert through a supported channel when failure conditions are met | Trigger opens the incident, dispatcher sends a Discord message, `alert_log` records delivery |
-
-How each type of issue is detected:
-
-| Issue | Detection | Pulse implementation |
-|---|---|---|
-| Website down | Request fails or times out | Check result `down`, error captured |
-| Website returns an error | Unexpected status such as 500 | `http_code` differs from `expected_status` |
-| Website slow | Request duration measured | `response_ms` above `degraded_ms` gives `degraded` |
-| Server RAM high | Agent reports memory usage | `server_metric.ram_pct` against `server_alert_rule` |
-| Disk nearly full | Agent reports disk usage | `server_metric.disk_pct` against rule |
-| IP blacklisted | Checked against external blacklists | DNSBL lookups, stored in `blacklist_result` |
-| SSL certificate issue | Certificate and connection inspected | `ssl_check`: expiry, issuer, hostname match, handshake errors |
-| Scheduled job did not run | Heartbeat not received | `heartbeat_ping` sweep, section 6.7 |
-
-**Single-VM limitation:** HetrixTools confirms outages from several locations, which a single VM cannot truly do. Pulse compensates with confirmation retries and the failure threshold, keeps `probe_node` in the schema so more locations can be added, and (optional, for the demo) lets a laptop run the checker in "remote node" mode, posting results to `/api/node/report`.
-
-### 6.7 Heartbeat monitors
-1. User creates a monitor of type HEARTBEAT; Pulse generates a secret token and shows a URL like `/api/heartbeat/<token>` once (only the hash is stored).
-2. The user's cron job or script calls that URL when it finishes (`curl` is enough).
-3. Each call inserts a `heartbeat_ping` row.
-4. The checker's heartbeat sweep compares `now - last ping` with `expected_every_sec + grace_sec`. If exceeded, it inserts a `down` row in `check_result` (error "heartbeat missed"), so the normal incident trigger and alerts apply. The next ping recovers it.
-
-### 6.8 Server monitoring agent
-1. User adds a monitor of type SERVER; Pulse generates a token and an install command for the agent.
-2. The agent runs on the target machine, collecting CPU, RAM, disk, network I/O and chosen service states every minute.
-3. It POSTs a JSON sample over HTTPS to `/api/agent/report`; the backend verifies the token hash and inserts `server_metric`.
-4. `trg_server_metric_ai` evaluates `server_alert_rule`s (for example `disk_pct > 90` for 3 consecutive samples) and opens or closes an incident.
-5. If no sample arrives for several minutes, the agent is treated as offline (same mechanism as a missed heartbeat).
-6. The dashboard charts each metric over time, with threshold lines drawn on the graph.
-
-### 6.9 Blacklist monitoring
-1. Each monitor's target is resolved to its IP; the domain itself is also checked against domain-based lists.
-2. Hourly, the job queries 5 to 10 DNSBL providers (reverse-IP lookup, e.g. `4.3.2.1.<zone>`). An answer in `127.0.0.x` means listed; no answer means clean.
-3. Results go into `blacklist_result`; `trg_blacklist_result_ai` opens a warning incident on a new listing.
-4. Some providers (such as Spamhaus) refuse queries that arrive via large public DNS resolvers, so the VM runs its own local resolver for these lookups.
-
----
-
+(1) Authenticate, load the monitor **scoped to the owner** (404 if not theirs). (2) `ssrfGuard` validates the URL and resolves DNS (section 8). (3) `checker` performs the request with timeout and size cap, records time and outcome. (4) In one transaction: `INSERT` into `health_checks`; the trigger updates `incidents`; read back `v_monitor_status` and the open incident. (5) Respond with the check, the monitor summary and the open incident (or null).
+### 6.3 Status policy
+HTTP 200 to 399 after at most 3 redirects is `up`. HTTP 400 and above, timeouts, DNS or connection or TLS errors, and blocked destinations are `down` with an `error_summary`. Response time is measured until response headers arrive.
+### 6.4 Report a problem
+(1) The owner enables a report link on a monitor; Pulse generates a random 32-character token. (2) Anyone with the link sees the monitor's name and current up or down status, plus a short form (category, description, optional email). (3) The submission is validated, rate-limited and stored in `problem_reports` with status `new`. (4) The owner sees a "new reports" count on the dashboard and monitor list and triages each report (`acknowledged`, `resolved`, `dismissed`). `v_monitor_status.recent_reports_15m` highlights a monitor that receives several reports while its checks still pass (users may see a problem the checker misses). Reports never change incidents; the lifecycle stays owned by the trigger.
+### 6.5 Runtime assumption
+One Express process runs the scheduler. This is documented, not hidden.
 ## 7. Real-World Problems Addressed
-
-These are the most common complaints about existing monitoring tools, and how Pulse handles each.
-
-| Problem in real tools | Pulse approach | Tier |
-|---|---|---|
-| **False positives and alert fatigue** | Confirmation retries plus a per-monitor `failure_threshold`; incident only after N consecutive failures | Core |
-| **One-location checks mistake local problems for outages** | `probe_node` table; results tagged by node; with 2+ nodes, require agreement before opening an incident | Core schema, optional second node |
-| **Slow response mistaken for outage** | Separate `degraded` status and configurable timeout; slow is not down | Core |
-| **HTTP 200 but the page is broken** | `expected_status` and `expected_keyword` content check | Core |
-| **Alerts during planned work** | `maintenance_window` suppresses incidents and alerts | Extended |
-| **Repeated alerts for the same incident** | `cooldown_min` per monitor-contact link; one incident, deduplicated alerts | Core |
-| **Silent notification failures** | `alert_log` records delivery status; failed sends visible in UI | Core |
-| **Monitoring data grows without bound** | `daily_summary` rollup plus scheduled purge of raw rows | Extended |
-| **Expired certificates take sites down** | `ssl_check` with warning trigger | Extended |
-| **No history of why something broke** | `incident.cause` and `notes` fields, `audit_log` | Core / Extended |
-| **Per-monitor pricing and caps** | Self-hosted, no artificial limits | Inherent |
-| **Cron jobs / scheduled tasks failing silently** | Heartbeat monitor type: job pings Pulse; no ping within the window means incident | Stretch |
-| **Tool says "up" while real users cannot reach the site** | Visitors can report problems; a cluster of reports raises a warning incident even when checks pass | Extended |
-| **Credibility of uptime numbers** | Reports computed from stored raw data via one procedure, with maintenance time excluded | Extended |
-
----
-
+| Problem | Pulse approach |
+|---|---|
+| **Duplicate incidents under concurrent failures** | Partial unique index plus `ON CONFLICT DO NOTHING`; at most one open incident per monitor |
+| **Status and timestamps disagree** | Lifecycle `CHECK` on `incidents` |
+| **Derived values drift** | Status, uptime and durations are computed by views and a function, never stored |
+| **Monitoring data grows without bound** | `sp_purge_old_checks` on a daily tick (minimum retention 7 days) |
+| **Tool says "up" while users cannot reach the site** | Report link per monitor; `recent_reports_15m` highlights several reports while checks pass |
+| **Arbitrary URL reaches the internal network** | SSRF guard on save and on every check, validated DNS lookup, manual redirects |
+| **Guests abuse the free tier** | Database-enforced limit of 2 monitors (row lock); stale guests deleted after 7 days |
+| **One user reads another's data** | Owner-scoped queries; other users' resources return 404 |
 ## 8. Security
+### Authentication and sessions
+Argon2id (or bcrypt cost 12+) hashes, never logged or returned; minimum length 10; email lower-cased; Generic login failure message; cookie `HttpOnly`, `SameSite=Lax`, `Secure` in production; session id regenerated on login, register and guest upgrade; Sessions stored in PostgreSQL (`user_sessions`); logout and account deletion destroy them; strong `SESSION_SECRET` from the environment.
+### Authorization
+Every user-scoped query includes the owner; other users' resources return 404; an automated isolation test covers every endpoint; Guest limit enforced by the database trigger.
+### SSRF and outbound requests
+Only `http` and `https`, no credentials in the URL, maximum length 2048; production ports 80, 443, 8080, 8443; DNS resolved and **every** address checked against blocked ranges (loopback, private, link-local including cloud metadata `169.254.0.0/16`, `100.64.0.0/10`, `0.0.0.0/8`, multicast, IPv6 `::1`, `fc00::/7`, `fe80::/10`, IPv4-mapped IPv6); a custom `lookup` validates the address actually dialled (stops DNS rebinding); Redirects followed manually (max 3, each hop re-validated); 10 second timeout; body not read beyond 64 KB; Validation on save **and** on every check; `SSRF_ALLOWLIST` is exact `host:port` only and empty in production.
+### Input validation and injection
+- `zod` on every body, query and path parameter; all SQL parameterized (sort column and `date_trunc` unit whitelisted); output escaped by React; `CHECK` constraints back up API validation
+### Public problem reports
+Token: 32 random characters from `crypto.randomBytes`, unique, rotatable, can be disabled; unknown and disabled tokens give the same 404; JSON only, size and field limits (description 10 to 1000), email check, honeypot, rate limits per IP and per token; Public page reveals only the monitor name and up or down status; descriptions rendered as plain text.
+### Abuse and platform hardening
+In-memory rate limits: login 10 per 15 minutes, register 5 per hour, guest creation 5 per hour, manual check 10 per minute; `helmet` headers, origin check on mutating requests, errors never expose SQL or stack traces, no secrets in the repository, app database user has no superuser rights.
+## 9. Deployment and Setup
+Pulse runs locally for the lab demo; hosting is optional. With `NODE_ENV=production` Express serves `frontend/dist`, so production is one Node process in front of PostgreSQL. Requirements: Node.js 20+, PostgreSQL 15+, Git, `psql`. **Steps**
+(1) Create a PostgreSQL role `pulse` and two databases it owns: `pulse` (application) and `pulse_test` (automated tests). (2) Copy `backend/.env.example` to `.env` and set `SESSION_SECRET`. (3) In `backend`: install dependencies, run migrations, seed the demo data, start the API (port 4000). (4) Start the demo target server (port 4100). (5) In `frontend`: install dependencies and start the dev server (port 5173), which proxies `/api` to the API.
 
-- **Passwords:** hashed (e.g. Werkzeug `generate_password_hash`), never stored in plain text
-- **SQL injection:** parameterized queries everywhere
-- **Sessions and CSRF:** secure cookies, CSRF tokens on forms
-- **Authorization:** role checks on every route; users see only their own monitors; admin sees all
-- **SSRF protection** (arbitrary URL input): allow `http/https` only, resolve the hostname and reject loopback, private, link-local and metadata ranges, cap redirects, enforce timeouts and response size, rate-limit the instant check
-- **Database:** dedicated least-privilege user; MariaDB bound to `127.0.0.1`; never expose port 3306
-- **Secrets:** environment variables or a git-ignored config; commit a `config.example.py`
-- **Production:** `debug=False`, HTTPS, firewall allowing only 22/80/443
-- **Agent and heartbeat tokens:** long random tokens, only the hash stored, shown once, revocable; agent traffic over HTTPS only; reject oversized or malformed payloads
-- **Discord webhooks:** accept only URLs on Discord's webhook host, treat the URL as a secret (hide it in the UI after saving), never log it
-- **Problem reports:** rate limit per hashed IP, length caps, output escaping (to prevent stored XSS on the triage screen), optional simple challenge (e.g. honeypot field) against spam
-- **Input validation:** URL format, email, port range, interval range, empty fields (client and server side)
+**Environment variables**
 
----
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL`, `TEST_DATABASE_URL` | Application and test databases |
+| `SESSION_SECRET` | Signs session cookies; the app refuses to start in production without it |
+| `FRONTEND_ORIGIN`, `PUBLIC_BASE_URL` | Allowed origin; base URL used in report links |
+| `SCHEDULER_ENABLED`, `SCHEDULER_TICK_SECONDS` | Scheduler switch and tick length (15 seconds) |
+| `CHECK_TIMEOUT_MS` | Health check timeout (10,000 ms) |
+| `SSRF_ALLOWLIST` | Exact `host:port` pairs allowed despite the SSRF guard (demo target only; empty in production) |
 
-## 9. Deployment
-
-```
-Ubuntu VM
- |- nginx            (80/443, reverse proxy, TLS)
- |- gunicorn         (Flask app, systemd service: pulse-web)
- |- checker.py       (systemd service: pulse-checker)
- |- dispatcher.py    (systemd service: pulse-alerts, or thread in checker)
- |- unbound          (local DNS resolver for blacklist lookups)
- `- mariadb-server   (localhost only)
-```
-
-- Services restart on failure and start on boot via systemd.
-- **Single VM:** the web app, checker, dispatcher, database and Pulse's own server agent all run on it; the VM monitors itself.
-- Database is built from numbered scripts in `sql/` (and one merged `pulse.sql` for submission).
-- **Demo plan:** run on the VM; keep a local laptop copy as fallback; be ready to rebuild the database from the SQL script on request.
-
----
-
+| Task | Command |
+|---|---|
+| Change tables or constraints | edit `schema.ts`, `npm run db:generate`, `npm run db:migrate` |
+| Add or change a view, function or trigger | `npm run db:custom -- --name=<n>`, write SQL, `npm run db:migrate` |
+| Check migration history | `npm run db:check` |
+| Clean demo state (development only) | `npm run db:reset`, then `npm run db:seed` |
+| Run tests / produce the submission SQL file | `npm test` (uses `pulse_test`) / `npm run db:dump` |
 ## 10. Project Structure
-
 ```
 pulse/
-|- app/
-|  |- __init__.py          # Flask app factory
-|  |- routes/              # auth, monitors, incidents, reports, status, api
-|  |- db.py                # connection helper
-|  |- security.py          # SSRF guard, validators
-|  |- templates/
-|  `- static/
-|- services/
-|  |- checker.py           # scheduler + workers
-|  |- dispatcher.py        # notifications
-|  `- jobs.py              # SSL, blacklist, rollups
-|- sql/
-|  |- 01_schema.sql
-|  |- 02_views.sql
-|  |- 03_procedures.sql
-|  |- 04_triggers.sql
-|  |- 05_events.sql
-|  `- 06_sample_data.sql
-|- agent/
-|  `- pulse_agent.py       # server monitoring agent (psutil)
-|- deploy/                 # nginx conf, systemd unit files
-|- docs/                   # ER diagram, screenshots, report
-|- config.example.py
-|- requirements.txt
-|- architecture.md
-`- README.md
+|- backend/
+|  |- drizzle/             # migrations: 0000 tables, 0001 views, 0002 functions/procedure, 0003 triggers
+|  |- src/
+|  |  |- db/               # client, schema.ts, relations.ts, views.ts, queries/ (the query catalogue)
+|  |  |- middleware/       # session, requireUser, originCheck, rateLimit, validate, errorHandler
+|  |  |- modules/          # auth, account, monitors, incidents, reports, public, dashboard
+|  |  |- health/           # ssrfGuard, checker, checkService, scheduler
+|  |  `- server.ts, app.ts, config/env.ts, lib/
+|  |- scripts/             # seed.ts, reset-db.ts, dump-sql.ts
+|  |- demo/target-server.ts
+|  `- tests/               # db/ (constraints, trigger, function), api/ (Supertest), health/ (SSRF, lifecycle)
+|- frontend/src/
+|  |- api/                 # the only code that calls fetch
+|  |- auth/, hooks/, lib/
+|  |- pages/               # Login, Register, Dashboard, Monitors, MonitorForm, MonitorDetail, Incidents, Reports, PublicReport, Account
+|  `- components/          # layout, ui, charts (Recharts)
+|- docs/                   # api.md, ER diagram, demo script, test plan, report
+`- README.md, architecture.md, .gitignore
 ```
-
----
-
+Layering is deliberately thin: `routes -> controller -> service -> db/queries`.
 ## 11. Roadmap
+Phases assume roughly three weeks.
 
-| Phase | Deliverable |
+| Phase | Done when |
 |---|---|
-| 1 | Finalize stack and scope; ER diagram; `01_schema.sql` with constraints |
-| 2 | Core app: login, monitor CRUD, instant check, DB connectivity |
-| 3 | Checker with retries, `check_result`, incident trigger |
-| 4 | Dashboard, alerts and `alert_log`, uptime report, search/filter |
-| 5 | Views, procedures, events; sample data (10+ rows per major table) |
-| 6 | Extended features: charts, problem reports, SSL, maintenance windows, status page |
-| 7 | Heartbeat monitors, blacklist monitoring, server agent |
-| 8 | VM deployment; testing; screenshots; consolidated report; demo rehearsal |
+| 0 Foundations | Repository, `.env.example`, database role documented; both apps start; `npm run dev` works |
+| 1 Schema and DB objects | `db:migrate` on an empty database creates 6 tables, views, function, procedure, triggers. SQL tests: each `CHECK` rejects bad rows; a second failing check opens no second incident; success resolves; a failure after recovery opens a **new** incident; 10 concurrent failing inserts leave one open incident; a guest's third monitor is rejected with `GL001`, including under concurrency; `db:check` passes and no `ALTER TABLE` appears in custom migrations |
+| 2 Auth and accounts | Register, login, logout, guest, profile, password change and delete account work in the UI; guest upgrade keeps monitors; cookie flags and Argon2id as in section 8 |
+| 3 Monitor management | CRUD with search and status filter; a second user gets 404 everywhere (automated); duplicate URL 409, invalid URL 422, guest limit 403 with a "register to add more" prompt |
+| 4 Health engine | Manual check records status code, response time, timestamp, error summary, source; timeout, refused connection, DNS failure and 5xx give readable errors; SSRF tests pass; scheduler never overlaps runs or holds a transaction during network calls; demo target switches modes |
+| 5 Dashboard, history, charts | Totals and recent checks; paginated history; incident list; detail page with uptime summary (SQL function) and two charts for 24h, 7d, 30d; loading, empty and error states |
+| 6 Problem reports | Owner enables, rotates and disables a report link; a visitor without a session can submit; invalid, honeypot and rate-limited submissions are rejected; triage works; dashboard shows the new-report count; `recent_reports_15m` highlights a monitor with several reports while checks pass |
+| 7 Seed, demo, tests | `db:reset` then `db:seed` is deterministic; the 11-step demo (12.4) runs without any external website; tests pass; `db:dump` produces one `.sql` file that rebuilds the database |
+| 8 Hardening and report | Security checklist (section 8) ticked; report assembled (ER diagram, schema, normalization, SQL scripts, screenshots, test table); two rehearsals |
+## 12. Testing Plan
+### 12.1 Automated test scenarios
+Lifecycle: first failure opens, repeat failures deduplicate, success resolves, new failure reopens as a new incident; Concurrency: simultaneous failing checks leave one open incident; simultaneous guest inserts cannot exceed the limit; Isolation: every user-scoped endpoint returns 404 for another user's ids; SSRF: loopback, `10.x`, `172.16.x`, `192.168.x`, `169.254.169.254`, `0.0.0.0`, `::1`, IPv4-mapped IPv6, a hostname whose DNS answer is private (mocked), and a redirect to an internal address are all rejected; Constraints: each `CHECK` and unique rule rejects a bad row; Function: `fn_monitor_uptime_summary` matches hand-computed values on a known fixture; Retention: `sp_purge_old_checks(30)` removes only older rows; values below 7 are refused; Reports: accepted only with a valid, enabled token; honeypot and rate limits reject abuse; reports never change incidents.
+### 12.2 Demo target server (`backend/demo/target-server.ts`, port 4100)
+A tiny Express server simulating named services, each with an independent mode: `up` (200 immediately), `slow` (200 after 1500 ms), `down` (503), `timeout` (never responds).
 
-**Scope rule:** finish Core before Extended; treat Stretch items as future enhancements unless time remains.
+| Endpoint | Behaviour |
+|---|---|
+| `GET /svc/:name` | Responds according to that service's mode |
+| `GET /control` | Shows all modes |
+| `POST /control/:name` with `{ "mode": "up" \| "slow" \| "down" \| "timeout" }` | Sets one service's mode |
+| `POST /control/reset` | All services back to `up` |
 
----
+The SSRF guard blocks loopback addresses by default. Only the exact `host:port` pairs in `SSRF_ALLOWLIST` (development value `localhost:4100,127.0.0.1:4100`) are permitted, and that list must be empty in production. The UI shows a **"Simulated target"** badge on any monitor whose URL matches the allowlist (derived, not stored). Real external monitoring of a public site works unchanged and is shown as a separate, labelled optional step.
+### 12.3 Seed data (`scripts/seed.ts`)
+Deterministic: fixed pseudo-random seed, chronological inserts per monitor so **the trigger generates the incidents** (the seed never writes to `incidents`).
 
-## 12. Testing Plan (summary)
+| Table | Rows | Notes |
+|---|---|---|
+| `users` | 10 | Demo user (`demo@pulse.test`), second user (`other@pulse.test`) for isolation, 6 more registered, 2 guests |
+| `monitors` | 14 | URLs under `http://localhost:4100/svc/<n>`; demo user has 5, second user 3, guests 1 or 2 |
+| `health_checks` | about 3,000 | 7 days at 30-minute spacing per monitor, mix of `scheduled` and `manual`, scripted outage windows |
+| `incidents` | 12 or more | Created by the trigger from the outage windows; all resolved at the end so the live demo starts clean |
+| `problem_reports` | 12 | Mixed categories and statuses; a few monitors have report links enabled |
 
-- Valid and invalid input on every form (empty fields, bad URL/email/port/dates)
-- Check results for: healthy site, nonexistent domain, closed port, slow endpoint, wrong status, missing keyword
-- Trigger behaviour: incident opens only after threshold, closes on recovery, suppressed in maintenance
-- Cooldown and duplicate-alert behaviour
-- Heartbeat: ping received on time, missed ping opens incident, next ping recovers
-- Server agent: metrics stored, threshold breach for N samples opens incident, agent offline detected, bad token rejected
-- Blacklist: use a DNSBL test entry (127.0.0.2) to confirm a "listed" result and incident
-- Discord: successful delivery, invalid webhook, failure recorded in `alert_log`
-- Role access (user cannot see another user's monitors)
-- Charts render correctly for empty, partial and full data ranges
-- Problem reports: valid and invalid submissions, rate limiting, cluster trigger, triage status changes, script injection in the description is escaped
-- SSRF attempts (`127.0.0.1`, `192.168.x.x`, `169.254.169.254`) rejected
-- Fresh database rebuild from SQL scripts
+Seeded registered users share a development-only password documented in the README. Seed and reset scripts refuse to run when `NODE_ENV=production`.
+### 12.4 Eleven-step demo
+Before starting: services reset to `up`.
 
----
+| # | Action | Expected result | Evidence to show |
+|---|---|---|---|
+| 1 | Register a new account (or log in as demo) | Lands on dashboard; `GET /auth/me` returns the user | Cookie flags in browser tools |
+| 2 | Create monitor "Shop API" pointing to `/svc/shop-api` | Appears with status unknown and a "Simulated target" badge | The new row in `monitors` |
+| 3 | Click **Run check** (service is `up`) | `up`, HTTP 200, response time shown | New row in `health_checks` |
+| 4 | Set Shop API to `down` on the demo target, then **Run check** twice | First failure: `down`, **incident opens**. Second failure: **no second incident** | `incidents` shows one open row; dashboard shows 1 open incident |
+| 5 | Set Shop API back to `up`, then **Run check** | `up`, **incident resolved** with `resolved_at` | `incidents` shows `resolved`; `v_incident_details` shows duration and failed-check count |
+| 6 | Open monitor detail and dashboard | History lists the checks; uptime %, average, min and max response; charts render | Output of `fn_monitor_uptime_summary` for the last day |
+| 7 | Search "shop" and filter status `down` | Lists narrow correctly | The parameterized search query from section 5.5 |
+| 8 | In `psql`, list the database objects | View, function, procedure and both triggers exist and were exercised | `psql` listings of views, functions and triggers |
+| 9 | As a guest, add a third monitor | Rejected with `GUEST_LIMIT_REACHED`; UI prompts to register | Trigger error `GL001` in the API log |
+| 10 | Log in as `other@pulse.test` and request the demo user's monitor id | 404 on every endpoint | Network tab responses |
+| 11 | Enable a report link on Shop API, open it in a private window, submit 3 reports within a minute | Reports accepted; dashboard shows a `new` count; Shop API shows "3 reports in 15 minutes" although checks pass | Rows in `problem_reports`; `recent_reports_15m` in `v_monitor_status` |
 
+Optional extra: enable the scheduler and show a scheduled check appearing within one interval (`trigger_source = 'scheduled'`).
 ## 13. Decisions
-
 **Decided**
-- Database: MariaDB; hosting: the team's own VM
-- **One VM only** (single probe node; remote-node mode optional for demo)
-- Alert channel: **Discord** webhooks
-- **Blacklist monitoring** and **heartbeat monitors** are in scope
-- HetrixTools-style detection model, including a server monitoring agent
-
-**Assumed (change if needed)**
-- Backend: Python + Flask
-
-**Still open**
-- Team size and member roles (database, backend, frontend, report/testing)
-- Topic approval and final submission deadlines
-- Whether the lab network allows outbound DNS and HTTPS to Discord during the demo (have a fallback plan)
+Stack: React, Vite, Tailwind, Express, Drizzle, PostgreSQL; no Redis, brokers or second ORM; One Express process runs the scheduler (single instance); Authorization is ownership-based with a guest tier (2 monitors); no RBAC; HTTP and HTTPS monitors only; Problem reports through a per-monitor report link; no public status page; 6 tables (5 domain tables plus the session store). **Deferred (not built, architecture leaves room):** alert notifications (Discord, email, Telegram), maintenance windows, SSL expiry checks, additional monitor types, multi-region probes, public status page, `pg_trgm` search index. **Open**
+Topic approval and submission deadlines (they only change the phase dates in section 11); Whether the demo machine allows running PostgreSQL locally, or the database will be shown from a laptop.
