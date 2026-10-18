@@ -46,8 +46,8 @@ export function IncidentsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Incidents History</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">Incidents History</h1>
+          <p className="text-sm text-neutral-500 mt-1">
             Downtime events automatically generated and resolved by PostgreSQL triggers
           </p>
         </div>
@@ -63,10 +63,10 @@ export function IncidentsPage() {
                   setPage(1);
                   setStatusFilter(st === "all" ? undefined : st);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
                   isSelected
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    ? "bg-neutral-900 text-white shadow-xs"
+                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
                 }`}
               >
                 {st}
@@ -90,63 +90,63 @@ export function IncidentsPage() {
           }
         />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-neutral-200 text-xs">
+              <thead className="bg-neutral-50/75 text-neutral-500 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left">Incident</th>
-                  <th scope="col" className="px-6 py-3 text-left">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left">Started At</th>
-                  <th scope="col" className="px-6 py-3 text-left">Resolved At</th>
-                  <th scope="col" className="px-6 py-3 text-left">Duration</th>
-                  <th scope="col" className="px-6 py-3 text-left">First Error</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">Incident</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">Status</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">Started At</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">Resolved At</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">Duration</th>
+                  <th scope="col" className="px-6 py-3.5 text-left">First Error</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
+              <tbody className="divide-y divide-neutral-100 bg-white">
                 {incidents.map((inc) => (
-                  <tr key={inc.id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={inc.id} className="hover:bg-neutral-50/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         to={`/monitors/${inc.monitorId}`}
-                        className="font-semibold text-slate-900 hover:text-blue-600"
+                        className="font-medium text-neutral-900 hover:underline"
                       >
                         {inc.monitorName}
                       </Link>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-[11px] text-neutral-400">
                         Incident #{inc.id} &bull; {inc.failedChecks} failed checks
                       </div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       {inc.status === "open" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           Open Outage
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle className="w-3.5 h-3.5" />
                           Resolved
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
                       {new Date(inc.startedAt).toLocaleString()}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
                       {inc.resolvedAt ? (
                         new Date(inc.resolvedAt).toLocaleString()
                       ) : (
-                        <span className="text-rose-600 font-semibold flex items-center gap-1">
+                        <span className="text-rose-600 font-medium flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" /> Ongoing
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-neutral-800">
                       {inc.durationSeconds >= 60
                         ? `${Math.floor(inc.durationSeconds / 60)}m ${inc.durationSeconds % 60}s`
                         : `${inc.durationSeconds}s`}
