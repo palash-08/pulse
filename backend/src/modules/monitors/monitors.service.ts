@@ -20,6 +20,15 @@ function isSimulatedUrl(url: string): boolean {
   }
 }
 
+function toIsoString(val: Date | string | null | undefined): string | null {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return Number.isNaN(val.getTime()) ? null : val.toISOString();
+  }
+  const d = new Date(val);
+  return Number.isNaN(d.getTime()) ? String(val) : d.toISOString();
+}
+
 export function formatMonitor(status: VMonitorStatus, reportToken?: string | null, createdAt?: Date | string) {
   return {
     id: status.monitorId,
@@ -27,17 +36,17 @@ export function formatMonitor(status: VMonitorStatus, reportToken?: string | nul
     url: status.url,
     checkIntervalSeconds: status.checkIntervalSeconds,
     status: status.currentStatus,
-    lastCheckedAt: status.lastCheckedAt ? status.lastCheckedAt.toISOString() : null,
+    lastCheckedAt: toIsoString(status.lastCheckedAt),
     lastStatusCode: status.lastStatusCode,
     lastResponseTimeMs: status.lastResponseTimeMs,
     lastError: status.lastErrorSummary,
     hasOpenIncident: status.hasOpenIncident,
-    openIncidentStartedAt: status.openIncidentStartedAt ? status.openIncidentStartedAt.toISOString() : null,
+    openIncidentStartedAt: toIsoString(status.openIncidentStartedAt),
     isSimulatedTarget: isSimulatedUrl(status.url),
     reportsEnabled: reportToken !== undefined ? reportToken !== null : false,
     reportToken: reportToken ?? null,
     recentReports15m: status.recentReports15m,
-    createdAt: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString(),
+    createdAt: toIsoString(createdAt) ?? new Date().toISOString(),
   };
 }
 

@@ -53,18 +53,18 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 sm:px-6 py-12">
       <div className="w-full max-w-md mx-auto space-y-8">
-        {/* Brand Logo & Header in Hark Pro Editorial Serif */}
-        <div className="text-center space-y-4">
+        {/* Brand Logo & Header */}
+        <div className="text-center space-y-3">
           <h1 className="text-5xl sm:text-6xl font-serif tracking-tight text-neutral-900 font-bold select-none">
-            pulse <span className="italic font-normal text-neutral-400">pro</span>
+            pulse
           </h1>
 
-          <div className="space-y-1 pt-1">
+          <div className="space-y-1">
             <p className="text-lg sm:text-xl text-neutral-900 font-medium tracking-tight">
-              A new kind of system for getting things done.
+              Sign in to Pulse
             </p>
-            <p className="text-base text-neutral-600">
-              Whatever you need, let Pulse handle it.
+            <p className="text-sm text-neutral-500">
+              The heartbeat of your infrastructure
             </p>
           </div>
         </div>
@@ -144,8 +144,8 @@ export function LoginPage() {
           </button>
         </form>
 
-        {/* Links & Disclaimer */}
-        <div className="space-y-4 pt-2 text-center">
+        {/* Links */}
+        <div className="pt-2 text-center">
           <div className="text-xs text-neutral-600">
             Don't have an account?{" "}
             <Link
@@ -155,13 +155,6 @@ export function LoginPage() {
               Create account
             </Link>
           </div>
-
-          <p className="text-[11px] text-neutral-400 max-w-sm mx-auto leading-relaxed">
-            By continuing, you agree to our{" "}
-            <span className="font-semibold text-neutral-600">Terms of Service</span> and
-            acknowledge that your data will be processed in accordance with our{" "}
-            <span className="font-semibold text-neutral-600">Privacy Policy</span>.
-          </p>
         </div>
       </div>
     </div>

@@ -32,64 +32,74 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
   });
 
   return (
-    <div className="h-64 w-full pt-2">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="responseTimeGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-          <XAxis
-            dataKey="label"
-            stroke="#94a3b8"
-            fontSize={11}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
-          />
-          <YAxis
-            stroke="#94a3b8"
-            fontSize={11}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
-            unit="ms"
-          />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                const item = payload[0].payload as (typeof formattedData)[0];
-                return (
-                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm text-xs">
-                    <div className="font-semibold text-slate-700">
-                      {item.dateLabel} {item.label}
+    <div className="h-64 w-full pt-2 flex flex-col justify-between">
+      <div className="flex-1 w-full min-h-[200px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="responseTimeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#18181b" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#18181b" stopOpacity={0.0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis
+              dataKey="label"
+              stroke="#a3a3a3"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "#e5e5e5" }}
+            />
+            <YAxis
+              stroke="#a3a3a3"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "#e5e5e5" }}
+              unit="ms"
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const item = payload[0].payload as (typeof formattedData)[0];
+                  return (
+                    <div className="bg-white p-3 rounded-2xl border border-neutral-200 shadow-md text-xs space-y-1">
+                      <div className="font-semibold text-neutral-800">
+                        {item.dateLabel} {item.label}
+                      </div>
+                      <div className="text-neutral-900 font-bold text-sm">
+                        {item.avgMs} ms <span className="text-[11px] font-normal text-neutral-500">(Avg)</span>
+                      </div>
+                      <div className="text-neutral-400 text-[11px]">
+                        Min: {item.minMs} ms &bull; Max: {item.maxMs} ms
+                      </div>
+                      <div className="text-neutral-500 text-[11px]">
+                        Checks: {item.checks} ({item.failures} failures)
+                      </div>
                     </div>
-                    <div className="text-blue-600 font-medium mt-1">
-                      Average: {item.avgMs} ms
-                    </div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">
-                      Min: {item.minMs} ms | Max: {item.maxMs} ms
-                    </div>
-                    <div className="text-slate-400 text-[11px]">
-                      Checks: {item.checks} ({item.failures} failures)
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="avgMs"
-            stroke="#2563eb"
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#responseTimeGrad)"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="avgMs"
+              stroke="#18181b"
+              strokeWidth={2}
+              dot={{ r: 4, strokeWidth: 2, fill: "#ffffff", stroke: "#18181b" }}
+              activeDot={{ r: 6, fill: "#18181b", stroke: "#ffffff", strokeWidth: 2 }}
+              fillOpacity={1}
+              fill="url(#responseTimeGrad)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {formattedData.length === 1 && (
+        <p className="text-[11px] text-neutral-400 text-center pt-2">
+          1 data point recorded. Click <strong>"Run Check Now"</strong> above to record more pings immediately.
+        </p>
+      )}
     </div>
   );
 }

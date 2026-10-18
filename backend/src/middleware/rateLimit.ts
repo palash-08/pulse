@@ -26,7 +26,7 @@ class MemoryRateLimiter {
   }
 
   middleware() {
-    return (req: Request, _res: Response, next: NextFunction) => {
+    return (req: Request, res: Response, next: NextFunction) => {
       const key = this.keyGenerator(req);
       const now = Date.now();
       const record = this.store.get(key);
@@ -37,6 +37,8 @@ class MemoryRateLimiter {
       }
 
       if (record.count >= this.maxRequests) {
+        const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
+        res.setHeader("Retry-After", String(retryAfterSeconds));
         return next(new RateLimitedError());
       }
 
@@ -54,39 +56,62 @@ function getClientIp(req: Request): string {
   return req.socket.remoteAddress || "unknown";
 }
 
-// Rate limiters as per architecture specification
+const isDev = process.env.NODE_ENV !== "production";
+
+function isLocalIp(ip: string): boolean {
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1" ||
+    ip === "localhost" ||
+    ip === "unknown"
+  );
+}
+
+// Rate limiters as per architecture specification with dev & testing relaxations
 export const loginRateLimit = new MemoryRateLimiter(
   15 * 60 * 1000, // 15 minutes
-  10,
+  isDev ? 200 : 15,
   (req) => `login:${getClientIp(req)}:${req.body?.email || ""}`
 ).middleware();
 
 export const registerRateLimit = new MemoryRateLimiter(
   60 * 60 * 1000, // 1 hour
-  5,
+  isDev ? 200 : 20,
   (req) => `register:${getClientIp(req)}`
 ).middleware();
 
-export const guestRateLimit = new MemoryRateLimiter(
-  60 * 60 * 1000, // 1 hour
-  5,
-  (req) => `guest:${getClientIp(req)}`
-).middleware();
+export const guestRateLimit = (() => {
+  const limiter = new MemoryRateLimiter(
+    15 * 60 * 1000, // 15 minutes
+    isDev ? 500 : 60,
+    (req) => `guest:${getClientIp(req)}`
+  );
+  const mw = limiter.middleware();
+  return (req: Request, res: Response, next: NextFunction) => {
+    // If the request already has an active session/user, or is testing on localhost in dev, don't block
+    if (req.user || (isDev && isLocalIp(getClientIp(req)))) {
+      return next();
+    }
+    return mw(req, res, next);
+  };
+})();
 
 export const manualCheckRateLimit = new MemoryRateLimiter(
   60 * 1000, // 1 minute
-  10,
+  isDev ? 120 : 15,
   (req) => `check:${req.user?.id || getClientIp(req)}`
 ).middleware();
 
 export const publicReportIpRateLimit = new MemoryRateLimiter(
   60 * 60 * 1000, // 1 hour
-  5,
+  isDev ? 100 : 10,
   (req) => `public_report_ip:${getClientIp(req)}`
 ).middleware();
 
 export const publicReportTokenRateLimit = new MemoryRateLimiter(
   60 * 60 * 1000, // 1 hour
-  30,
+  isDev ? 300 : 60,
   (req) => `public_report_token:${req.params.token}`
 ).middleware();
+

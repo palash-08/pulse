@@ -89,7 +89,7 @@ export interface ChartBucket {
 
 export interface ChartData {
   range: string;
-  bucket: "hour" | "day";
+  bucket: "minute" | "hour" | "day";
   points: ChartBucket[];
 }
 

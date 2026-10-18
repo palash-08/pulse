@@ -76,10 +76,10 @@ export function PublicReportPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 sm:px-6 py-12">
       <div className="max-w-md w-full mx-auto space-y-8">
-        {/* Header in Hark Pro Editorial Serif */}
-        <div className="text-center space-y-4">
+        {/* Header in Editorial Serif */}
+        <div className="text-center space-y-3">
           <h1 className="text-5xl sm:text-6xl font-serif tracking-tight text-neutral-900 font-bold select-none">
-            pulse <span className="italic font-normal text-neutral-400">pro</span>
+            pulse
           </h1>
           <div className="space-y-1 pt-1">
             <p className="text-lg sm:text-xl text-neutral-900 font-medium tracking-tight">

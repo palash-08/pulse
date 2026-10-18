@@ -20,7 +20,8 @@ describe("API Security - User Resource Isolation", () => {
       })
       .expect(201);
 
-    userACookie = resA.headers["set-cookie"];
+    const rawA = resA.headers["set-cookie"];
+    userACookie = Array.isArray(rawA) ? rawA : [String(rawA)];
 
     // User A creates a monitor
     const monitorRes = await request(app)
@@ -44,7 +45,8 @@ describe("API Security - User Resource Isolation", () => {
       })
       .expect(201);
 
-    userBCookie = resB.headers["set-cookie"];
+    const rawB = resB.headers["set-cookie"];
+    userBCookie = Array.isArray(rawB) ? rawB : [String(rawB)];
   });
 
   it("User B accessing User A's monitor returns 404 (not 403)", async () => {

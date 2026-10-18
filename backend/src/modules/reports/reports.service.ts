@@ -21,7 +21,7 @@ export async function updateStatus(
       ownerId: monitors.ownerId,
     })
     .from(problemReports)
-    .join(monitors, eq(monitors.id, problemReports.monitorId))
+    .innerJoin(monitors, eq(monitors.id, problemReports.monitorId))
     .where(and(eq(problemReports.id, reportId), eq(monitors.ownerId, ownerId)));
 
   if (!existing) {
