@@ -1,6 +1,7 @@
 {
   "name": "pulse-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Pulse backend - Lightweight uptime monitoring and health checks",
   "main": "dist/server.js",
   "scripts": {
