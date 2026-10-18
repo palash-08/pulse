@@ -44,7 +44,7 @@ export function MonitorDetailPage() {
 
   const [monitor, setMonitor] = useState<MonitorSummary | null>(null);
   const [openIncident, setOpenIncident] = useState<Incident | null>(null);
-  const [range, setRange] = useState<"24h" | "7d" | "30d">("7d");
+  const [range, setRange] = useState<"1h" | "24h" | "7d" | "30d">("1h");
   const [summary, setSummary] = useState<UptimeSummary | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
 
@@ -273,10 +273,15 @@ export function MonitorDetailPage() {
 
       {/* Summary Stats & Range Selector */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-serif font-bold text-neutral-900">Uptime & Latency Metrics</h2>
-          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-full text-xs font-medium">
-            {(["24h", "7d", "30d"] as const).map((r) => (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-serif font-bold text-neutral-900">Uptime & Latency Metrics</h2>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Automated pings measure whether the service is accessible and its response time in milliseconds.
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-full text-xs font-medium self-start sm:self-auto">
+            {(["1h", "24h", "7d", "30d"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
@@ -336,6 +341,26 @@ export function MonitorDetailPage() {
           </div>
         )}
       </div>
+
+      {summary && summary.totalChecks <= 2 && (
+        <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 text-xs text-neutral-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="font-semibold text-neutral-900 block">
+              Newly added monitor: {summary.totalChecks} check{summary.totalChecks === 1 ? "" : "s"} recorded
+            </span>
+            <p className="text-neutral-500 leading-relaxed max-w-xl">
+              Pulse pings this URL automatically every {monitor?.checkIntervalSeconds}s. Click <strong>"Test Ping Now"</strong> to send an immediate ping and generate response time curves on the graphs below.
+            </p>
+          </div>
+          <button
+            onClick={handleRunCheck}
+            disabled={checking}
+            className="px-4 py-2 bg-neutral-900 hover:bg-black text-white rounded-full font-medium transition-all shadow-xs shrink-0 disabled:opacity-50"
+          >
+            {checking ? "Pinging..." : "Test Ping Now"}
+          </button>
+        </div>
+      )}
 
       {/* Recharts Visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

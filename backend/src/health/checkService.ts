@@ -52,7 +52,9 @@ export async function executeCheck(
       check: {
         id: insertedCheck.id,
         monitorId: insertedCheck.monitorId,
-        checkedAt: insertedCheck.checkedAt.toISOString(),
+        checkedAt: insertedCheck.checkedAt instanceof Date
+          ? insertedCheck.checkedAt.toISOString()
+          : new Date(insertedCheck.checkedAt).toISOString(),
         isSuccessful: insertedCheck.isSuccessful,
         statusCode: insertedCheck.statusCode,
         responseTimeMs: insertedCheck.responseTimeMs,

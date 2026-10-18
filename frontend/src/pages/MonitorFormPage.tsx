@@ -39,12 +39,17 @@ export function MonitorFormPage() {
     setGuestLimitReached(false);
     setSaving(true);
 
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
     try {
       if (isEditing && id) {
-        await updateMonitor(Number(id), { name, url, checkIntervalSeconds });
+        await updateMonitor(Number(id), { name: name.trim(), url: cleanUrl, checkIntervalSeconds });
         navigate(`/monitors/${id}`);
       } else {
-        const res = await createMonitor({ name, url, checkIntervalSeconds });
+        const res = await createMonitor({ name: name.trim(), url: cleanUrl, checkIntervalSeconds });
         navigate(`/monitors/${res.monitor.id}`);
       }
     } catch (err: any) {

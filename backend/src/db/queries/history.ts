@@ -123,12 +123,12 @@ export async function getRecentActivity(ownerId: number, limit: number = 10): Pr
  */
 export async function getChartBuckets(
   monitorId: number,
-  range: "24h" | "7d" | "30d" = "7d"
-): Promise<{ range: string; bucket: "hour" | "day"; points: ChartBucket[] }> {
+  range: "1h" | "24h" | "7d" | "30d" = "24h"
+): Promise<{ range: string; bucket: "minute" | "hour" | "day"; points: ChartBucket[] }> {
   // Whitelist unit and interval
-  const unit = range === "24h" ? "hour" : "day";
+  const unit = range === "1h" ? "minute" : range === "24h" ? "hour" : "day";
   const intervalString =
-    range === "24h" ? "24 hours" : range === "30d" ? "30 days" : "7 days";
+    range === "1h" ? "1 hour" : range === "24h" ? "24 hours" : range === "30d" ? "30 days" : "7 days";
 
   const result = await db.execute<{
     bucket_start: string;
@@ -174,10 +174,10 @@ export async function getChartBuckets(
  */
 export async function getUptimeSummary(
   monitorId: number,
-  range: "24h" | "7d" | "30d" = "7d"
+  range: "1h" | "24h" | "7d" | "30d" = "24h"
 ): Promise<UptimeSummary> {
   const intervalString =
-    range === "24h" ? "24 hours" : range === "30d" ? "30 days" : "7 days";
+    range === "1h" ? "1 hour" : range === "24h" ? "24 hours" : range === "30d" ? "30 days" : "7 days";
 
   const result = await db.execute<{
     total_checks: string;

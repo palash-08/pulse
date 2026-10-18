@@ -9,7 +9,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <footer className="border-t border-neutral-200 py-6 text-center text-xs text-neutral-400 bg-white">
-        <span className="font-serif font-bold text-neutral-700">pulse <span className="italic font-normal text-neutral-400">pro</span></span> &bull; The heartbeat of your infrastructure &bull; DBMS Group Mini Project
+        <span className="font-serif font-bold text-neutral-700">pulse</span> &bull; The heartbeat of your infrastructure &bull; DBMS Group Mini Project
       </footer>
     </div>
   );

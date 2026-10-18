@@ -67,11 +67,11 @@ export function getMonitorHistory(
   return apiClient.get<PaginatedResponse<Check>>(`/monitors/${id}/history`, params);
 }
 
-export function getMonitorSummary(id: number, range: "24h" | "7d" | "30d" = "7d") {
+export function getMonitorSummary(id: number, range: "1h" | "24h" | "7d" | "30d" = "24h") {
   return apiClient.get<UptimeSummary>(`/monitors/${id}/summary`, { range });
 }
 
-export function getMonitorResponseTimes(id: number, range: "24h" | "7d" | "30d" = "7d") {
+export function getMonitorResponseTimes(id: number, range: "1h" | "24h" | "7d" | "30d" = "24h") {
   return apiClient.get<ChartData>(`/monitors/${id}/response-times`, { range });
 }
 

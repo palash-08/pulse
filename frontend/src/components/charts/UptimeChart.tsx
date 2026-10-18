@@ -33,70 +33,78 @@ export function UptimeChart({ data }: UptimeChartProps) {
   });
 
   return (
-    <div className="h-64 w-full pt-2">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-          <XAxis
-            dataKey="label"
-            stroke="#94a3b8"
-            fontSize={11}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
-          />
-          <YAxis
-            stroke="#94a3b8"
-            fontSize={11}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
-            domain={[0, 100]}
-            unit="%"
-          />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                const item = payload[0].payload as (typeof formattedData)[0];
-                return (
-                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm text-xs">
-                    <div className="font-semibold text-slate-700">
-                      {item.dateLabel} {item.label}
+    <div className="h-64 w-full pt-2 flex flex-col justify-between">
+      <div className="flex-1 w-full min-h-[200px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis
+              dataKey="label"
+              stroke="#a3a3a3"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "#e5e5e5" }}
+            />
+            <YAxis
+              stroke="#a3a3a3"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "#e5e5e5" }}
+              domain={[0, 100]}
+              unit="%"
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const item = payload[0].payload as (typeof formattedData)[0];
+                  return (
+                    <div className="bg-white p-3 rounded-2xl border border-neutral-200 shadow-md text-xs space-y-1">
+                      <div className="font-semibold text-neutral-800">
+                        {item.dateLabel} {item.label}
+                      </div>
+                      <div
+                        className={`font-bold text-sm ${
+                          item.uptimePct >= 99
+                            ? "text-emerald-600"
+                            : item.uptimePct >= 95
+                            ? "text-amber-600"
+                            : "text-rose-600"
+                        }`}
+                      >
+                        Uptime: {item.uptimePct}%
+                      </div>
+                      <div className="text-neutral-500 text-[11px]">
+                        Checks: {item.checks} &bull; Failures: {item.failures}
+                      </div>
                     </div>
-                    <div
-                      className={`font-medium mt-1 ${
-                        item.uptimePct >= 99
-                          ? "text-emerald-600"
-                          : item.uptimePct >= 95
-                          ? "text-amber-600"
-                          : "text-rose-600"
-                      }`}
-                    >
-                      Uptime: {item.uptimePct}%
-                    </div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">
-                      Checks: {item.checks} | Failures: {item.failures}
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
-          <Bar dataKey="uptimePct" radius={[3, 3, 0, 0]}>
-            {formattedData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={
-                  entry.uptimePct >= 99
-                    ? "#10b981"
-                    : entry.uptimePct >= 95
-                    ? "#f59e0b"
-                    : "#ef4444"
+                  );
                 }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+                return null;
+              }}
+            />
+            <Bar dataKey="uptimePct" minPointSize={6} radius={[4, 4, 0, 0]}>
+              {formattedData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    entry.uptimePct >= 99
+                      ? "#10b981"
+                      : entry.uptimePct >= 95
+                      ? "#f59e0b"
+                      : "#ef4444"
+                  }
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {formattedData.length === 1 && (
+        <p className="text-[11px] text-neutral-400 text-center pt-2">
+          1 bucket recorded. Uptime bars will form as additional checks are recorded.
+        </p>
+      )}
     </div>
   );
 }

@@ -28,5 +28,6 @@ export const historyQuerySchema = z.object({
 });
 
 export const rangeQuerySchema = z.object({
-  range: z.enum(["24h", "7d", "30d"]).default("7d"),
+  range: z.enum(["1h", "24h", "7d", "30d"]).default("24h"),
 });
+

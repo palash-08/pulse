@@ -44,7 +44,7 @@ export function NavBar() {
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2 group select-none">
               <span className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
-                pulse <span className="italic font-normal text-neutral-400">pro</span>
+                pulse
               </span>
             </Link>
 
