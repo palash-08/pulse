@@ -62,13 +62,13 @@ export function ReportsPage() {
   const getCategoryBadge = (cat: string) => {
     switch (cat) {
       case "down":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-100 text-rose-800">Down</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-rose-50 text-rose-700 border border-rose-200">Down</span>;
       case "slow":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800">Slow</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-amber-50 text-amber-700 border border-amber-200">Slow</span>;
       case "error":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-100 text-purple-800">Error</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-purple-50 text-purple-700 border border-purple-200">Error</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-800">Other</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-neutral-100 text-neutral-700 border border-neutral-200">Other</span>;
     }
   };
 
@@ -77,8 +77,8 @@ export function ReportsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">User Problem Reports</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">User Problem Reports</h1>
+          <p className="text-sm text-neutral-500 mt-1">
             Public issue reports submitted by end-users through monitor report links
           </p>
         </div>
@@ -94,10 +94,10 @@ export function ReportsPage() {
                   setPage(1);
                   setStatusFilter(st === "all" ? undefined : st);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
                   isSelected
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    ? "bg-neutral-900 text-white shadow-xs"
+                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
                 }`}
               >
                 {st}
@@ -122,36 +122,36 @@ export function ReportsPage() {
           icon={<MessageSquare className="w-8 h-8" />}
         />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs divide-y divide-neutral-100 overflow-hidden">
           {reports.map((r) => (
-            <div key={r.id} className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+            <div key={r.id} className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-neutral-50/50 transition-colors">
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     to={`/monitors/${r.monitorId}`}
-                    className="font-semibold text-slate-900 hover:text-blue-600 text-sm"
+                    className="font-medium text-neutral-900 hover:underline text-sm"
                   >
                     {r.monitorName}
                   </Link>
                   {getCategoryBadge(r.category)}
                   <span
-                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    className={`text-[10px] font-medium uppercase px-2.5 py-0.5 rounded-full border ${
                       r.status === "new"
-                        ? "bg-blue-100 text-blue-800"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
                         : r.status === "acknowledged"
-                        ? "bg-amber-100 text-amber-800"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
                         : r.status === "resolved"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-slate-100 text-slate-500"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-neutral-100 text-neutral-500 border-neutral-200"
                     }`}
                   >
                     {r.status}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-700 whitespace-pre-wrap">{r.description}</p>
+                <p className="text-xs text-neutral-700 whitespace-pre-wrap">{r.description}</p>
 
-                <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                <div className="flex items-center gap-3 text-[11px] text-neutral-400">
                   <span>Report #{r.id}</span>
                   <span>&bull; {new Date(r.createdAt).toLocaleString()}</span>
                   {r.reporterEmail && <span>&bull; Reporter: {r.reporterEmail}</span>}
@@ -164,7 +164,7 @@ export function ReportsPage() {
                   <button
                     onClick={() => handleUpdateStatus(r.id, "acknowledged")}
                     disabled={updatingId === r.id}
-                    className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded-full flex items-center gap-1 transition-colors"
                   >
                     <Eye className="w-3 h-3" /> Acknowledge
                   </button>
@@ -174,7 +174,7 @@ export function ReportsPage() {
                   <button
                     onClick={() => handleUpdateStatus(r.id, "resolved")}
                     disabled={updatingId === r.id}
-                    className="px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 hover:bg-black rounded-full flex items-center gap-1 transition-colors shadow-xs"
                   >
                     <Check className="w-3 h-3" /> Resolve
                   </button>
@@ -184,7 +184,7 @@ export function ReportsPage() {
                   <button
                     onClick={() => handleUpdateStatus(r.id, "dismissed")}
                     disabled={updatingId === r.id}
-                    className="px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-full flex items-center gap-1 transition-colors"
                   >
                     <X className="w-3 h-3" /> Dismiss
                   </button>
@@ -192,6 +192,7 @@ export function ReportsPage() {
               </div>
             </div>
           ))}
+
 
           <Pagination
             page={page}

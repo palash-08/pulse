@@ -3,13 +3,16 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        serif: ["Newsreader", "Georgia", "serif"],
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+      },
       colors: {
         brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
+          50: "#f5f5f5",
+          100: "#e5e5e5",
+          900: "#171717",
+          950: "#0a0a0a",
         },
       },
     },

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Activity, UserCheck, ArrowRight } from "lucide-react";
+import { UserCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.js";
 import { ApiClientError } from "../api/client.js";
 
@@ -45,87 +45,123 @@ export function LoginPage() {
     }
   };
 
+  const handleQuickDemo = () => {
+    setEmail("demo@pulse.test");
+    setPassword("password123!");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex w-12 h-12 rounded-2xl bg-blue-600 items-center justify-center text-white shadow-md mb-4">
-          <Activity className="w-7 h-7" />
+    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 sm:px-6 py-12">
+      <div className="w-full max-w-md mx-auto space-y-8">
+        {/* Brand Logo & Header in Hark Pro Editorial Serif */}
+        <div className="text-center space-y-4">
+          <h1 className="text-5xl sm:text-6xl font-serif tracking-tight text-neutral-900 font-bold select-none">
+            pulse <span className="italic font-normal text-neutral-400">pro</span>
+          </h1>
+
+          <div className="space-y-1 pt-1">
+            <p className="text-lg sm:text-xl text-neutral-900 font-medium tracking-tight">
+              A new kind of system for getting things done.
+            </p>
+            <p className="text-base text-neutral-600">
+              Whatever you need, let Pulse handle it.
+            </p>
+          </div>
         </div>
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Pulse</h2>
-        <p className="mt-1 text-sm text-slate-600">The heartbeat of your infrastructure</p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-sm rounded-2xl sm:px-10 border border-slate-200">
-          {error && (
-            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg">
-              {error}
-            </div>
-          )}
+        {error && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl text-center">
+            {error}
+          </div>
+        )}
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Email address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="demo@pulse.test"
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
-            </div>
+        {/* Quick Action Pill Buttons */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleGuest}
+            disabled={guestLoading}
+            className="w-full h-12 sm:h-13 rounded-full bg-[#18181b] hover:bg-black text-white text-sm font-medium flex items-center justify-center gap-2.5 transition-all shadow-sm active:scale-[0.99] disabled:opacity-50"
+          >
+            <UserCheck className="w-4 h-4 text-neutral-400" />
+            <span>{guestLoading ? "Starting Guest Session..." : "Continue as Guest"}</span>
+          </button>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
-            </div>
+          <button
+            type="button"
+            onClick={handleQuickDemo}
+            className="w-full h-12 sm:h-13 rounded-full bg-[#18181b] hover:bg-black text-white text-sm font-medium flex items-center justify-center gap-2.5 transition-all shadow-sm active:scale-[0.99]"
+          >
+            <Sparkles className="w-4 h-4 text-neutral-400" />
+            <span>Fill Demo Credentials (demo@pulse.test)</span>
+          </button>
+        </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+        {/* Subtle Minimalist Divider */}
+        <div className="relative my-4 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-neutral-200" />
+          </div>
+          <span className="relative bg-white px-4 text-xs text-neutral-400 uppercase tracking-widest font-normal">
+            or
+          </span>
+        </div>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-400 font-semibold">Or</span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={handleGuest}
-                disabled={guestLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
-              >
-                <UserCheck className="w-4 h-4 text-slate-500" />
-                {guestLoading ? "Starting Guest Session..." : "Continue as Guest"}
-              </button>
-            </div>
+        {/* Email / Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              className="w-full h-12 px-6 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors text-center"
+            />
           </div>
 
-          <div className="mt-6 text-center text-xs text-slate-500">
+          <div>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full h-12 px-6 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors text-center"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full h-12 rounded-full text-sm font-medium transition-all shadow-sm active:scale-[0.99] ${
+              email && password
+                ? "bg-neutral-900 hover:bg-black text-white"
+                : "bg-[#9e9e9e] text-white hover:bg-neutral-600"
+            } disabled:opacity-50`}
+          >
+            {loading ? "Signing in..." : "Continue"}
+          </button>
+        </form>
+
+        {/* Links & Disclaimer */}
+        <div className="space-y-4 pt-2 text-center">
+          <div className="text-xs text-neutral-600">
             Don't have an account?{" "}
-            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-500 inline-flex items-center gap-1">
-              Create account <ArrowRight className="w-3 h-3" />
+            <Link
+              to="/register"
+              className="font-semibold text-neutral-900 hover:underline inline-flex items-center gap-1"
+            >
+              Create account
             </Link>
           </div>
+
+          <p className="text-[11px] text-neutral-400 max-w-sm mx-auto leading-relaxed">
+            By continuing, you agree to our{" "}
+            <span className="font-semibold text-neutral-600">Terms of Service</span> and
+            acknowledge that your data will be processed in accordance with our{" "}
+            <span className="font-semibold text-neutral-600">Privacy Policy</span>.
+          </p>
         </div>
       </div>
     </div>

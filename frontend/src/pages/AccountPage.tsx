@@ -72,24 +72,24 @@ export function AccountPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Account Settings</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Manage your credentials, profile, and security preferences</p>
+        <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">Account Settings</h1>
+        <p className="text-sm text-neutral-500 mt-1">Manage your credentials, profile, and security preferences</p>
       </div>
 
       {user?.isGuest && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-900 text-sm space-y-2">
-          <div className="flex items-center gap-2 font-bold text-base text-amber-800">
-            <Sparkles className="w-5 h-5 text-amber-600" />
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 text-white text-sm space-y-3">
+          <div className="flex items-center gap-2 font-bold text-base text-neutral-100">
+            <Sparkles className="w-5 h-5 text-neutral-400" />
             Temporary Guest Account
           </div>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-neutral-400 leading-relaxed">
             You are using Pulse in guest mode. Guest sessions expire after 7 days and allow monitoring up to 2 endpoints.
             Upgrade to a permanent registered account to save your monitors indefinitely.
           </p>
-          <div className="pt-2">
+          <div className="pt-1">
             <Link
               to="/register"
-              className="inline-block px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
+              className="inline-block px-5 py-2.5 bg-white text-neutral-900 rounded-full text-xs font-semibold hover:bg-neutral-100 transition-colors shadow-sm"
             >
               Upgrade & Keep Existing Monitors &rarr;
             </Link>
@@ -99,37 +99,37 @@ export function AccountPage() {
 
       {/* Profile Section */}
       {!user?.isGuest && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
-          <div className="flex items-center gap-2 font-bold text-slate-900 text-base">
-            <User className="w-5 h-5 text-slate-400" />
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs p-6 sm:p-8 space-y-4">
+          <div className="flex items-center gap-2 font-serif font-bold text-neutral-900 text-lg">
+            <User className="w-5 h-5 text-neutral-400" />
             Profile Information
           </div>
 
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase">Email Address</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1.5">Email Address</label>
               <input
                 type="email"
                 disabled
                 value={user?.email || ""}
-                className="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 cursor-not-allowed"
+                className="w-full h-11 px-4 bg-neutral-100 border border-neutral-200 rounded-full text-xs text-neutral-500 cursor-not-allowed"
               />
-              <span className="text-[11px] text-slate-400">Email cannot be changed after registration.</span>
+              <span className="text-[11px] text-neutral-400 mt-1 block px-1">Email cannot be changed after registration.</span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase">Display Name</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1.5">Display Name</label>
               <input
                 type="text"
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 transition-colors"
               />
             </div>
 
             {profileSuccess && (
-              <div className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+              <div className="text-xs text-emerald-600 font-medium flex items-center gap-1">
                 <ShieldCheck className="w-4 h-4" /> Profile updated successfully!
               </div>
             )}
@@ -137,7 +137,7 @@ export function AccountPage() {
             <button
               type="submit"
               disabled={savingProfile}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm disabled:opacity-50"
+              className="px-5 py-2.5 bg-neutral-900 hover:bg-black text-white font-medium rounded-full text-xs shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {savingProfile ? "Saving..." : "Save Profile"}
             </button>
@@ -147,38 +147,38 @@ export function AccountPage() {
 
       {/* Change Password Section */}
       {!user?.isGuest && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
-          <div className="flex items-center gap-2 font-bold text-slate-900 text-base">
-            <KeyRound className="w-5 h-5 text-slate-400" />
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs p-6 sm:p-8 space-y-4">
+          <div className="flex items-center gap-2 font-serif font-bold text-neutral-900 text-lg">
+            <KeyRound className="w-5 h-5 text-neutral-400" />
             Security & Password
           </div>
 
           {passError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl">
               {passError}
             </div>
           )}
 
           {passSuccess && (
-            <div className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+            <div className="text-xs text-emerald-600 font-medium flex items-center gap-1">
               <ShieldCheck className="w-4 h-4" /> Password changed successfully!
             </div>
           )}
 
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase">Current Password</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1.5">Current Password</label>
               <input
                 type="password"
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase">New Password</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1.5">New Password</label>
               <input
                 type="password"
                 required
@@ -186,14 +186,14 @@ export function AccountPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 10 characters"
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={changingPass}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm disabled:opacity-50"
+              className="px-5 py-2.5 bg-neutral-900 hover:bg-black text-white font-medium rounded-full text-xs shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {changingPass ? "Updating Password..." : "Change Password"}
             </button>
@@ -202,18 +202,18 @@ export function AccountPage() {
       )}
 
       {/* Danger Zone: Delete Account */}
-      <div className="bg-rose-50/50 rounded-2xl border border-rose-200 p-6 sm:p-8 space-y-3">
-        <div className="flex items-center gap-2 font-bold text-rose-900 text-base">
+      <div className="bg-white rounded-3xl border border-rose-200 p-6 sm:p-8 space-y-3">
+        <div className="flex items-center gap-2 font-serif font-bold text-rose-900 text-lg">
           <Trash2 className="w-5 h-5 text-rose-600" />
           Danger Zone
         </div>
-        <p className="text-xs text-rose-700">
+        <p className="text-xs text-rose-700 leading-relaxed">
           Permanently delete your account and all associated monitors, health checks, incident logs, and problem reports.
           This action cannot be undone.
         </p>
         <button
           onClick={() => setShowDeleteModal(true)}
-          className="mt-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-colors"
+          className="mt-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-full text-xs shadow-sm transition-colors active:scale-[0.99]"
         >
           Delete Account
         </button>
