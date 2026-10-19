@@ -27,6 +27,9 @@ const __dirname = path.dirname(__filename);
 export function createApp() {
   const app = express();
 
+  // Trust reverse proxy (Nginx) for X-Forwarded-Proto and secure session cookies
+  app.set("trust proxy", 1);
+
   // 1. Security & request processing middlewares
   app.use(
     helmet({
