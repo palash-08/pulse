@@ -56,8 +56,10 @@ export async function getMonitorHistory(
 
   const isSuccessFilter =
     options.result === "up" ? true : options.result === "down" ? false : null;
-  const fromDate = options.from ? new Date(options.from) : null;
-  const toDate = options.to ? new Date(options.to) : null;
+  const fromDate =
+    options.from && !isNaN(new Date(options.from).getTime()) ? new Date(options.from) : null;
+  const toDate =
+    options.to && !isNaN(new Date(options.to).getTime()) ? new Date(options.to) : null;
 
   const itemsResult = await db.execute<any>(sql`
     SELECT
