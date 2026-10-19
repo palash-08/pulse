@@ -10,14 +10,7 @@ import {
 export async function createHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const monitor = await monitorsService.create(req.user!.id, req.body);
-    // Execute immediate initial check so the monitor starts with real status & latency
-    try {
-      await executeCheck(monitor.id, "manual");
-    } catch {
-      // Continue even if initial ping fails (e.g. invalid target or transient network issue)
-    }
-    const fresh = await monitorsService.getById(req.user!.id, monitor.id);
-    res.status(201).json({ monitor: fresh.monitor });
+    res.status(201).json({ monitor });
   } catch (err) {
     next(err);
   }
