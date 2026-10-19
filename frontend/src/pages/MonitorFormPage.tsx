@@ -41,7 +41,12 @@ export function MonitorFormPage() {
 
     let cleanUrl = url.trim();
     if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-      cleanUrl = `https://${cleanUrl}`;
+      const lower = cleanUrl.toLowerCase();
+      if (lower.startsWith("localhost") || lower.startsWith("127.0.0.1") || lower.startsWith("[::1]")) {
+        cleanUrl = `http://${cleanUrl}`;
+      } else {
+        cleanUrl = `https://${cleanUrl}`;
+      }
     }
 
     try {

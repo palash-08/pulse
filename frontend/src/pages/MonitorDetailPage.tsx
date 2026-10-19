@@ -10,6 +10,7 @@ import {
   Check,
   AlertTriangle,
   Link as LinkIcon,
+  RefreshCw,
 } from "lucide-react";
 import {
   getMonitor,
@@ -44,9 +45,10 @@ export function MonitorDetailPage() {
 
   const [monitor, setMonitor] = useState<MonitorSummary | null>(null);
   const [openIncident, setOpenIncident] = useState<Incident | null>(null);
-  const [range, setRange] = useState<"1h" | "24h" | "7d" | "30d">("1h");
+  const [range, setRange] = useState<"1h" | "24h" | "7d" | "30d">("24h");
   const [summary, setSummary] = useState<UptimeSummary | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [rotatingToken, setRotatingToken] = useState(false);
 
   // History table
   const [historyItems, setHistoryItems] = useState<CheckType[]>([]);
@@ -120,6 +122,19 @@ export function MonitorDetailPage() {
     }
   };
 
+  const handleRotateReportLink = async () => {
+    if (!monitor) return;
+    try {
+      setRotatingToken(true);
+      await enableReportLink(monitorId);
+      await loadData(true);
+    } catch (err: any) {
+      alert(`Failed to rotate report link: ${err.message}`);
+    } finally {
+      setRotatingToken(false);
+    }
+  };
+
   const handleCopyReportLink = () => {
     if (!monitor?.reportToken) return;
     const link = `${window.location.origin}/report/${monitor.reportToken}`;
@@ -190,6 +205,12 @@ export function MonitorDetailPage() {
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-3xl font-serif font-bold text-neutral-900">{monitor.name}</h1>
               <StatusBadge status={monitor.status} size="md" />
+              {monitor.recentReports15m > 0 && (
+                <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  {monitor.recentReports15m} recent problem report{monitor.recentReports15m === 1 ? "" : "s"} (15m)
+                </span>
+              )}
               {monitor.isSimulatedTarget && (
                 <span className="text-xs bg-neutral-100 text-neutral-600 border border-neutral-200 px-2.5 py-0.5 rounded-full font-mono">
                   Simulated Target (localhost:4100)
@@ -216,12 +237,25 @@ export function MonitorDetailPage() {
                 <LinkIcon className="w-3.5 h-3.5 text-neutral-400" />
                 Public Problem Report Link
               </span>
-              <button
-                onClick={handleToggleReportLink}
-                className="text-[11px] font-semibold text-neutral-900 hover:underline"
-              >
-                {monitor.reportsEnabled ? "Disable" : "Enable"}
-              </button>
+              <div className="flex items-center gap-2">
+                {monitor.reportsEnabled && (
+                  <button
+                    onClick={handleRotateReportLink}
+                    disabled={rotatingToken}
+                    className="text-[11px] font-semibold text-neutral-600 hover:text-neutral-900 hover:underline flex items-center gap-1 disabled:opacity-50"
+                    title="Generate a new public report token"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${rotatingToken ? "animate-spin" : ""}`} />
+                    Rotate
+                  </button>
+                )}
+                <button
+                  onClick={handleToggleReportLink}
+                  className="text-[11px] font-semibold text-neutral-900 hover:underline"
+                >
+                  {monitor.reportsEnabled ? "Disable" : "Enable"}
+                </button>
+              </div>
             </div>
 
             {monitor.reportsEnabled && monitor.reportToken ? (
@@ -342,11 +376,11 @@ export function MonitorDetailPage() {
         )}
       </div>
 
-      {summary && summary.totalChecks <= 2 && (
+      {summary && summary.totalChecks === 0 && (
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 text-xs text-neutral-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="font-semibold text-neutral-900 block">
-              Newly added monitor: {summary.totalChecks} check{summary.totalChecks === 1 ? "" : "s"} recorded
+              Newly added monitor: No checks recorded yet
             </span>
             <p className="text-neutral-500 leading-relaxed max-w-xl">
               Pulse pings this URL automatically every {monitor?.checkIntervalSeconds}s. Click <strong>"Test Ping Now"</strong> to send an immediate ping and generate response time curves on the graphs below.
