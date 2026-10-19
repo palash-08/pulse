@@ -23,6 +23,8 @@ export function AccountPage() {
 
   // Account deletion
   const [deletePass, setDeletePass] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -61,11 +63,15 @@ export function AccountPage() {
 
   const handleDeleteAccount = async () => {
     try {
+      setDeleting(true);
+      setDeleteError(null);
       await deleteAccount({ password: user?.isGuest ? undefined : deletePass });
       await logout();
       navigate("/login");
     } catch (err: any) {
-      alert(`Account deletion failed: ${err.message}`);
+      setDeleteError(err.message || "Account deletion failed");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -226,13 +232,34 @@ export function AccountPage() {
         message={
           user?.isGuest
             ? "Are you sure you want to end this guest session and delete all data?"
-            : "Please confirm account deletion. All your monitors and history will be permanently deleted."
+            : "Please enter your password to confirm account deletion. All your monitors and history will be permanently deleted."
         }
-        confirmLabel="Confirm Delete"
+        confirmLabel={deleting ? "Deleting..." : "Confirm Delete"}
         isDestructive={true}
+        disabled={deleting || (!user?.isGuest && !deletePass)}
         onConfirm={handleDeleteAccount}
-        onCancel={() => setShowDeleteModal(false)}
-      />
+        onCancel={() => {
+          setShowDeleteModal(false);
+          setDeletePass("");
+          setDeleteError(null);
+        }}
+      >
+        {!user?.isGuest && (
+          <div className="space-y-2 pt-1">
+            <label className="block text-[11px] font-medium text-neutral-700">Account Password</label>
+            <input
+              type="password"
+              placeholder="Enter your current password"
+              value={deletePass}
+              onChange={(e) => setDeletePass(e.target.value)}
+              className="w-full h-10 px-4 rounded-full border border-neutral-200 text-xs text-neutral-900 focus:outline-none focus:border-neutral-900"
+            />
+            {deleteError && (
+              <p className="text-xs text-rose-600 px-1">{deleteError}</p>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
