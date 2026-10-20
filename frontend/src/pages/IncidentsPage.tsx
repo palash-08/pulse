@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Clock, CheckCircle } from "lucide-react";
-import { GlassCard } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { listIncidents } from "../api/incidents.js";
 import { Incident } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";

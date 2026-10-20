@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
-import { GlassCard, GlassButton, toast } from "glaceui";
+import { GlassButton, toast } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { getPublicReportInfo, submitPublicReport } from "../api/publicReport.js";
 import { StatusBadge } from "../components/ui/StatusBadge.js";
 import { Spinner } from "../components/ui/Spinner.js";
@@ -59,7 +60,7 @@ export function PublicReportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#08080a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0b0b10] flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -67,7 +68,7 @@ export function PublicReportPage() {
 
   if (error || !info) {
     return (
-      <div className="min-h-screen bg-[#08080a] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0b0b10] flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <ErrorState message={error || "Invalid problem report link"} />
         </div>
@@ -77,7 +78,7 @@ export function PublicReportPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#08080a] flex flex-col justify-center items-center px-4 sm:px-6 py-12 relative overflow-hidden"
+      className="min-h-screen bg-[#0b0b10] flex flex-col justify-center items-center px-4 sm:px-6 py-12 relative overflow-hidden"
       style={{
         backgroundImage: `radial-gradient(circle at 1px 1px, #27272a 1px, transparent 0)`,
         backgroundSize: "24px 24px",

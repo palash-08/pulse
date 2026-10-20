@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, KeyRound, Trash2, Sparkles, ShieldCheck } from "lucide-react";
-import { GlassCard, GlassButton, toast } from "glaceui";
+import { GlassButton, toast } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { updateAccount, changePassword, deleteAccount } from "../api/account.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";

@@ -12,7 +12,8 @@ import {
   Link as LinkIcon,
   RefreshCw,
 } from "lucide-react";
-import { GlassCard, GlassButton, toast } from "glaceui";
+import { GlassButton, toast } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import {
   getMonitor,
   runManualCheck,

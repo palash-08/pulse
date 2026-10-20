@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import { GlassCard, GlassButton } from "glaceui";
+import { GlassButton } from "glaceui";
+import { GlassCard } from "./GlassCard.js";
 
 interface ErrorStateProps {
   message: string;

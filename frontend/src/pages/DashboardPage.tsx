@@ -11,7 +11,8 @@ import {
   TrendingUp,
   FileText,
 } from "lucide-react";
-import { GlassCard, GlassButton, toast } from "glaceui";
+import { GlassButton, toast } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { getDashboard } from "../api/dashboard.js";
 import { runManualCheck } from "../api/monitors.js";
 import { DashboardData } from "../api/types.js";

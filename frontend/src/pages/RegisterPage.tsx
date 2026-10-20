@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
-import { GlassCard, GlassButton } from "glaceui";
+import { GlassButton } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { ApiClientError } from "../api/client.js";
 
@@ -41,7 +42,7 @@ export function RegisterPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#08080a] flex flex-col justify-center items-center px-4 sm:px-6 py-12 relative overflow-hidden"
+      className="min-h-screen bg-[#0b0b10] flex flex-col justify-center items-center px-4 sm:px-6 py-12 relative overflow-hidden"
       style={{
         backgroundImage: `radial-gradient(circle at 1px 1px, #27272a 1px, transparent 0)`,
         backgroundSize: "24px 24px",

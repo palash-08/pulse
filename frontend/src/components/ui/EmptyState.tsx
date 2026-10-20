@@ -1,5 +1,5 @@
 import React from "react";
-import { GlassCard } from "glaceui";
+import { GlassCard } from "./GlassCard.js";
 
 interface EmptyStateProps {
   title: string;

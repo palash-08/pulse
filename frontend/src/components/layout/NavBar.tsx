@@ -1,94 +1,98 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
+  Activity,
   Server,
-  AlertCircle,
+  AlertTriangle,
   FileText,
   UserCircle,
   LogOut,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.js";
+import { CursorSpotlight } from "../ui/CursorSpotlight.js";
 
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  exact?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { path: "/", label: "Dashboard", icon: Activity, exact: true },
   { path: "/monitors", label: "Monitors", icon: Server },
-  { path: "/incidents", label: "Incidents", icon: AlertCircle },
+  { path: "/incidents", label: "Incidents", icon: AlertTriangle },
   { path: "/reports", label: "Reports", icon: FileText },
 ];
 
 export function NavBar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
+  const navigate = useNavigate();
 
   const navRef = useRef<HTMLElement>(null);
-  const linkRefs = useRef<{ [key: string]: HTMLAnchorElement | null }>({});
+  const linkRefs = useRef<{ [path: string]: HTMLAnchorElement | null }>({});
   const [indicator, setIndicator] = useState<{ left: number; width: number; visible: boolean }>({
     left: 0,
     width: 0,
     visible: false,
   });
 
-  const activePath = (() => {
-    if (location.pathname === "/") return "/";
-    if (location.pathname.startsWith("/monitors")) return "/monitors";
-    if (location.pathname.startsWith("/incidents")) return "/incidents";
-    if (location.pathname.startsWith("/reports")) return "/reports";
-    return "";
-  })();
+  const activePath = location.pathname;
 
+  // React Bits style: calculate active pill position and smoothly slide indicator
   const updateIndicator = () => {
-    if (!activePath) {
-      setIndicator((prev) => ({ ...prev, visible: false }));
-      return;
+    let matchedPath: string | null = null;
+
+    if (activePath === "/") {
+      matchedPath = "/";
+    } else {
+      const match = NAV_ITEMS.filter((i) => i.path !== "/").find((i) =>
+        activePath.startsWith(i.path)
+      );
+      if (match) matchedPath = match.path;
     }
 
-    const currentEl = linkRefs.current[activePath];
-    const parentEl = navRef.current;
-
-    if (currentEl && parentEl) {
-      const parentRect = parentEl.getBoundingClientRect();
-      const currentRect = currentEl.getBoundingClientRect();
+    if (matchedPath && linkRefs.current[matchedPath] && navRef.current) {
+      const target = linkRefs.current[matchedPath]!;
+      const navRect = navRef.current.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
 
       setIndicator({
-        left: currentRect.left - parentRect.left,
-        width: currentRect.width,
+        left: targetRect.left - navRect.left,
+        width: targetRect.width,
         visible: true,
       });
+    } else {
+      setIndicator((prev) => ({ ...prev, visible: false }));
     }
   };
 
   useEffect(() => {
     updateIndicator();
+  }, [activePath]);
+
+  useEffect(() => {
     window.addEventListener("resize", updateIndicator);
     return () => window.removeEventListener("resize", updateIndicator);
-  }, [location.pathname, activePath]);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full">
-      {/* Guest Mode Warning Banner */}
+      {/* Guest Mode Notice Banner */}
       {user?.isGuest && (
-        <div className="bg-[#0f0f13] text-zinc-200 px-4 py-2 text-xs font-normal flex items-center justify-between border-b border-white/[0.08]">
-          <div className="flex items-center gap-2">
-            <span className="bg-amber-500/15 text-amber-300 border border-amber-500/25 px-2 py-0.5 rounded-full text-[10px] uppercase font-mono tracking-wider">
-              Guest Mode
-            </span>
-            <span className="text-zinc-400 text-xs hidden sm:inline">
-              Guest monitors are limited to 2 endpoints.
-            </span>
-          </div>
+        <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-200 text-xs py-2 px-4 text-center flex items-center justify-center gap-2 backdrop-blur-md">
           <Link
             to="/register"
-            className="font-medium text-amber-200 hover:text-amber-100 flex items-center gap-1.5 transition-colors"
+            className="hover:underline flex items-center gap-1.5 font-medium"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Upgrade to keep history & unlimited monitors &rarr;</span>
           </Link>
         </div>
@@ -96,9 +100,12 @@ export function NavBar() {
 
       {/* Floating Glacé Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <div className="glace-nav-bar rounded-2xl px-4 sm:px-5 py-2.5 flex items-center justify-between gap-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)]">
+        <div className="glace-nav-bar relative overflow-hidden rounded-2xl px-4 sm:px-5 py-2.5 flex items-center justify-between gap-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)]">
+          {/* Live Cursor Spotlight Feedback on NavBar */}
+          <CursorSpotlight size={300} opacity={0.12} />
+
           {/* Logo & Brand */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 relative z-10">
             <Link to="/" className="flex items-center gap-2 group select-none">
               <span className="font-serif text-2xl font-bold tracking-tight text-zinc-100 group-hover:text-white transition-colors">
                 pulse
@@ -108,13 +115,13 @@ export function NavBar() {
             {/* Glacé Spring Sliding Pill Navigation */}
             <nav
               ref={navRef}
-              className="relative hidden md:flex items-center p-1 rounded-full bg-white/[0.03] border border-white/[0.07] overflow-hidden"
+              className="relative hidden md:flex items-center p-1 rounded-full bg-white/[0.04] border border-white/[0.08] overflow-hidden"
               aria-label="Main Navigation"
             >
               {/* Sliding Active Pill */}
               {indicator.visible && (
                 <span
-                  className="absolute top-1 bottom-1 rounded-full bg-white/[0.12] border border-white/[0.18] shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.2)] pointer-events-none transition-all"
+                  className="absolute top-1 bottom-1 rounded-full bg-white/[0.14] border border-white/[0.20] shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] pointer-events-none transition-all"
                   style={{
                     left: `${indicator.left}px`,
                     width: `${indicator.width}px`,
@@ -140,7 +147,7 @@ export function NavBar() {
                     className={`relative z-10 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors duration-200 outline-none focus-visible:ring-1 focus-visible:ring-white/40 ${
                       isActive
                         ? "text-white"
-                        : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                        : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -152,13 +159,13 @@ export function NavBar() {
           </div>
 
           {/* User Profile & Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-10">
             <NavLink
               to="/account"
               className={({ isActive }) =>
                 `inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all border ${
                   isActive
-                    ? "bg-white/[0.14] text-white border-white/[0.22] shadow-sm"
+                    ? "bg-white/[0.16] text-white border-white/[0.25] shadow-sm"
                     : "glace-pill text-zinc-300 hover:text-white"
                 }`
               }
@@ -179,29 +186,33 @@ export function NavBar() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center justify-around mt-2 p-1 rounded-2xl glace-card-container text-xs">
+      {/* Mobile Bottom Dock */}
+      <div className="md:hidden fixed bottom-4 inset-x-4 z-50">
+        <nav className="glace-nav-bar relative overflow-hidden rounded-full p-1.5 flex items-center justify-around shadow-2xl">
+          <CursorSpotlight size={220} opacity={0.12} />
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activePath === item.path;
+
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 end={item.exact}
-                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+                className={`relative z-10 flex flex-col items-center gap-1 px-3 py-1.5 text-[11px] rounded-full transition-all ${
                   isActive
-                    ? "bg-white/[0.12] text-white shadow-xs font-medium"
+                    ? "bg-white/[0.14] text-white shadow-xs font-medium"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="text-[10px]">{item.label}</span>
+                <span>{item.label}</span>
               </NavLink>
             );
           })}
-        </div>
+        </nav>
       </div>
     </header>
   );

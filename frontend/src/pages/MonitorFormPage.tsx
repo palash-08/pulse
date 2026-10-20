@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { GlassCard, GlassButton } from "glaceui";
+import { GlassButton } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { createMonitor, getMonitor, updateMonitor } from "../api/monitors.js";
 import { ApiClientError } from "../api/client.js";
 import { Spinner } from "../components/ui/Spinner.js";

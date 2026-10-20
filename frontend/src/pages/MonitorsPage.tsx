@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Play, ExternalLink, Trash2, Edit3 } from "lucide-react";
-import { GlassCard, GlassButton, toast } from "glaceui";
+import { GlassButton, toast } from "glaceui";
+import { GlassCard } from "../components/ui/GlassCard.js";
 import { listMonitors, runManualCheck, deleteMonitor } from "../api/monitors.js";
 import { MonitorSummary } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";
