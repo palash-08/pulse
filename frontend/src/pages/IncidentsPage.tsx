@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Clock, CheckCircle } from "lucide-react";
+import { GlassCard } from "glaceui";
 import { listIncidents } from "../api/incidents.js";
 import { Incident } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";
@@ -46,14 +47,14 @@ export function IncidentsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">Incidents History</h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <h1 className="text-3xl font-serif font-bold text-white tracking-tight">Incidents History</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             Downtime events automatically generated and resolved by PostgreSQL triggers
           </p>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 self-start sm:self-auto p-1 bg-black/40 border border-white/10 rounded-full backdrop-blur-md">
           {(["all", "open", "resolved"] as const).map((st) => {
             const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
             return (
@@ -63,10 +64,10 @@ export function IncidentsPage() {
                   setPage(1);
                   setStatusFilter(st === "all" ? undefined : st);
                 }}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-all ${
                   isSelected
-                    ? "bg-neutral-900 text-white shadow-xs"
-                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
+                    ? "bg-white/15 text-white shadow-sm border border-white/20"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent"
                 }`}
               >
                 {st}
@@ -90,10 +91,10 @@ export function IncidentsPage() {
           }
         />
       ) : (
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
+        <GlassCard tone="dark" className="overflow-hidden p-0 border border-white/10 rounded-2xl">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-neutral-200 text-xs">
-              <thead className="bg-neutral-50/75 text-neutral-500 text-[11px] font-semibold uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead className="bg-white/[0.02] text-zinc-400 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th scope="col" className="px-6 py-3.5 text-left">Incident</th>
                   <th scope="col" className="px-6 py-3.5 text-left">Status</th>
@@ -103,56 +104,56 @@ export function IncidentsPage() {
                   <th scope="col" className="px-6 py-3.5 text-left">First Error</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 bg-white">
+              <tbody className="divide-y divide-white/[0.04]">
                 {incidents.map((inc) => (
-                  <tr key={inc.id} className="hover:bg-neutral-50/50 transition-colors">
+                  <tr key={inc.id} className="hover:bg-white/[0.03] transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         to={`/monitors/${inc.monitorId}`}
-                        className="font-medium text-neutral-900 hover:underline"
+                        className="font-medium text-zinc-100 hover:text-white hover:underline"
                       >
                         {inc.monitorName}
                       </Link>
-                      <div className="text-[11px] text-neutral-400">
+                      <div className="text-[11px] text-zinc-500">
                         Incident #{inc.id} &bull; {inc.failedChecks} failed checks
                       </div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       {inc.status === "open" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
-                          <AlertTriangle className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 animate-pulse">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
                           Open Outage
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                           Resolved
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-zinc-400 font-mono">
                       {new Date(inc.startedAt).toLocaleString()}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-zinc-400 font-mono">
                       {inc.resolvedAt ? (
                         new Date(inc.resolvedAt).toLocaleString()
                       ) : (
-                        <span className="text-rose-600 font-medium flex items-center gap-1">
+                        <span className="text-rose-400 font-medium flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" /> Ongoing
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-neutral-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-zinc-300">
                       {inc.durationSeconds >= 60
                         ? `${Math.floor(inc.durationSeconds / 60)}m ${inc.durationSeconds % 60}s`
                         : `${inc.durationSeconds}s`}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-rose-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-rose-400 font-mono text-xs truncate max-w-xs">
                       {inc.firstError || "—"}
                     </td>
                   </tr>
@@ -167,7 +168,7 @@ export function IncidentsPage() {
             total={total}
             onPageChange={(p) => setPage(p)}
           />
-        </div>
+        </GlassCard>
       )}
     </div>
   );

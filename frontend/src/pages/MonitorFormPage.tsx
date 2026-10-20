@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { GlassCard, GlassButton } from "glaceui";
 import { createMonitor, getMonitor, updateMonitor } from "../api/monitors.js";
 import { ApiClientError } from "../api/client.js";
 import { Spinner } from "../components/ui/Spinner.js";
@@ -80,34 +81,34 @@ export function MonitorFormPage() {
     <div className="max-w-xl mx-auto space-y-6">
       <Link
         to={isEditing ? `/monitors/${id}` : "/monitors"}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to {isEditing ? "Monitor Details" : "Monitors"}
       </Link>
 
-      <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs p-6 sm:p-8">
-        <h1 className="text-2xl font-serif font-bold text-neutral-900">
+      <GlassCard tone="dark" className="p-6 sm:p-8 border border-white/10 rounded-3xl">
+        <h1 className="text-2xl font-serif font-bold text-white">
           {isEditing ? "Edit Monitor Settings" : "Add New Monitor"}
         </h1>
-        <p className="text-xs text-neutral-500 mt-1">
+        <p className="text-xs text-zinc-400 mt-1">
           {isEditing
             ? "Update destination URL and health check parameters."
             : "Configure an endpoint for automated uptime tracking."}
         </p>
 
         {guestLimitReached && (
-          <div className="mt-4 p-4 bg-neutral-900 text-white rounded-2xl text-xs space-y-2 border border-neutral-800">
+          <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-2xl text-xs space-y-2">
             <div className="font-semibold flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-neutral-400" />
+              <Sparkles className="w-4 h-4 text-amber-400" />
               Guest Limit Reached (Max 2 Sites)
             </div>
-            <p className="text-neutral-400 leading-relaxed">
+            <p className="text-zinc-300 leading-relaxed">
               Guest accounts can monitor at most 2 sites. To add unlimited monitors, please create or upgrade your account.
             </p>
             <Link
               to="/register"
-              className="inline-block mt-2 px-4 py-2 bg-white text-neutral-900 rounded-full text-xs font-semibold hover:bg-neutral-100 transition-colors"
+              className="inline-block mt-2 px-4 py-2 bg-white/15 border border-white/20 text-white rounded-full text-xs font-semibold hover:bg-white/25 transition-colors"
             >
               Register Account Now &rarr;
             </Link>
@@ -115,14 +116,14 @@ export function MonitorFormPage() {
         )}
 
         {error && (
-          <div className="mt-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl">
+          <div className="mt-4 p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs rounded-2xl">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
               Monitor Name
             </label>
             <input
@@ -131,12 +132,12 @@ export function MonitorFormPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Shop API or Production App"
-              className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 transition-colors"
+              className="w-full h-11 px-4 rounded-full bg-zinc-900/60 border border-white/10 hover:border-white/20 focus:border-white/30 focus:outline-none text-xs text-zinc-100 placeholder-zinc-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
               URL (HTTP / HTTPS)
             </label>
             <input
@@ -145,49 +146,50 @@ export function MonitorFormPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="http://localhost:4100/svc/shop-api or https://example.com"
-              className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 transition-colors"
+              className="w-full h-11 px-4 rounded-full bg-zinc-900/60 border border-white/10 hover:border-white/20 focus:border-white/30 focus:outline-none text-xs text-zinc-100 placeholder-zinc-500 transition-colors"
             />
-            <p className="text-[11px] text-neutral-400 mt-1.5 px-1">
+            <p className="text-[11px] text-zinc-500 mt-1.5 px-1">
               Protected by SSRF safeguards. In development, demo simulator is available at localhost:4100.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
               Check Interval (Seconds)
             </label>
             <select
               value={checkIntervalSeconds}
               onChange={(e) => setCheckIntervalSeconds(Number(e.target.value))}
-              className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 bg-white transition-colors"
+              className="w-full h-11 px-4 rounded-full bg-zinc-900/60 border border-white/10 hover:border-white/20 focus:border-white/30 focus:outline-none text-xs text-zinc-100 transition-colors cursor-pointer"
             >
-              <option value={30}>Every 30 seconds</option>
-              <option value={60}>Every 1 minute (Recommended)</option>
-              <option value={120}>Every 2 minutes</option>
-              <option value={300}>Every 5 minutes</option>
-              <option value={600}>Every 10 minutes</option>
-              <option value={1800}>Every 30 minutes</option>
-              <option value={3600}>Every 1 hour</option>
+              <option value={30} className="bg-zinc-900 text-zinc-100">Every 30 seconds</option>
+              <option value={60} className="bg-zinc-900 text-zinc-100">Every 1 minute (Recommended)</option>
+              <option value={120} className="bg-zinc-900 text-zinc-100">Every 2 minutes</option>
+              <option value={300} className="bg-zinc-900 text-zinc-100">Every 5 minutes</option>
+              <option value={600} className="bg-zinc-900 text-zinc-100">Every 10 minutes</option>
+              <option value={1800} className="bg-zinc-900 text-zinc-100">Every 30 minutes</option>
+              <option value={3600} className="bg-zinc-900 text-zinc-100">Every 1 hour</option>
             </select>
           </div>
 
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-neutral-100">
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
             <Link
               to={isEditing ? `/monitors/${id}` : "/monitors"}
-              className="px-5 py-2.5 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors"
+              className="px-5 py-2.5 text-xs font-medium text-zinc-400 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 rounded-full transition-colors"
             >
               Cancel
             </Link>
-            <button
+            <GlassButton
+              tone="dark"
+              size="md"
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 text-xs font-medium text-white bg-neutral-900 hover:bg-black rounded-full shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Monitor"}
-            </button>
+            </GlassButton>
           </div>
         </form>
-      </div>
+      </GlassCard>
     </div>
   );
 }

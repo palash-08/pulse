@@ -16,7 +16,7 @@ interface ResponseTimeChartProps {
 export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+      <div className="flex h-56 items-center justify-center text-sm text-zinc-500">
         No response time data available for this range
       </div>
     );
@@ -38,23 +38,23 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
           <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="responseTimeGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#18181b" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#18181b" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#ffffff" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#ffffff" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
             <XAxis
               dataKey="label"
-              stroke="#a3a3a3"
+              stroke="#71717a"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: "#e5e5e5" }}
+              axisLine={{ stroke: "#3f3f46" }}
             />
             <YAxis
-              stroke="#a3a3a3"
+              stroke="#71717a"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: "#e5e5e5" }}
+              axisLine={{ stroke: "#3f3f46" }}
               unit="ms"
             />
             <Tooltip
@@ -62,17 +62,17 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
                 if (active && payload && payload.length) {
                   const item = payload[0].payload as (typeof formattedData)[0];
                   return (
-                    <div className="bg-white p-3 rounded-2xl border border-neutral-200 shadow-md text-xs space-y-1">
-                      <div className="font-semibold text-neutral-800">
+                    <div className="glace-modal p-3 rounded-xl border border-white/10 text-xs space-y-1 shadow-2xl">
+                      <div className="font-semibold text-zinc-300">
                         {item.dateLabel} {item.label}
                       </div>
-                      <div className="text-neutral-900 font-bold text-sm">
-                        {item.avgMs} ms <span className="text-[11px] font-normal text-neutral-500">(Avg)</span>
+                      <div className="text-zinc-100 font-bold text-sm">
+                        {item.avgMs} ms <span className="text-[11px] font-normal text-zinc-400">(Avg)</span>
                       </div>
-                      <div className="text-neutral-400 text-[11px]">
+                      <div className="text-zinc-400 text-[11px]">
                         Min: {item.minMs} ms &bull; Max: {item.maxMs} ms
                       </div>
-                      <div className="text-neutral-500 text-[11px]">
+                      <div className="text-zinc-500 text-[11px]">
                         Checks: {item.checks} ({item.failures} failures)
                       </div>
                     </div>
@@ -84,10 +84,10 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
             <Area
               type="monotone"
               dataKey="avgMs"
-              stroke="#18181b"
+              stroke="#f4f4f5"
               strokeWidth={2}
-              dot={{ r: 4, strokeWidth: 2, fill: "#ffffff", stroke: "#18181b" }}
-              activeDot={{ r: 6, fill: "#18181b", stroke: "#ffffff", strokeWidth: 2 }}
+              dot={{ r: 3, strokeWidth: 1.5, fill: "#08080a", stroke: "#f4f4f5" }}
+              activeDot={{ r: 5, fill: "#ffffff", stroke: "#08080a", strokeWidth: 2 }}
               fillOpacity={1}
               fill="url(#responseTimeGrad)"
             />
@@ -96,8 +96,8 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
       </div>
 
       {formattedData.length === 1 && (
-        <p className="text-[11px] text-neutral-400 text-center pt-2">
-          1 data point recorded. Click <strong>"Run Check Now"</strong> above to record more pings immediately.
+        <p className="text-[11px] text-zinc-500 text-center pt-2">
+          1 data point recorded. Click <strong>"Test Ping Now"</strong> above to record more pings immediately.
         </p>
       )}
     </div>

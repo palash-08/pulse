@@ -17,7 +17,7 @@ interface UptimeChartProps {
 export function UptimeChart({ data }: UptimeChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+      <div className="flex h-56 items-center justify-center text-sm text-zinc-500">
         No uptime data available for this range
       </div>
     );
@@ -37,19 +37,19 @@ export function UptimeChart({ data }: UptimeChartProps) {
       <div className="flex-1 w-full min-h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
             <XAxis
               dataKey="label"
-              stroke="#a3a3a3"
+              stroke="#71717a"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: "#e5e5e5" }}
+              axisLine={{ stroke: "#3f3f46" }}
             />
             <YAxis
-              stroke="#a3a3a3"
+              stroke="#71717a"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: "#e5e5e5" }}
+              axisLine={{ stroke: "#3f3f46" }}
               domain={[0, 100]}
               unit="%"
             />
@@ -58,22 +58,22 @@ export function UptimeChart({ data }: UptimeChartProps) {
                 if (active && payload && payload.length) {
                   const item = payload[0].payload as (typeof formattedData)[0];
                   return (
-                    <div className="bg-white p-3 rounded-2xl border border-neutral-200 shadow-md text-xs space-y-1">
-                      <div className="font-semibold text-neutral-800">
+                    <div className="glace-modal p-3 rounded-xl border border-white/10 text-xs space-y-1 shadow-2xl">
+                      <div className="font-semibold text-zinc-300">
                         {item.dateLabel} {item.label}
                       </div>
                       <div
                         className={`font-bold text-sm ${
                           item.uptimePct >= 99
-                            ? "text-emerald-600"
+                            ? "text-emerald-400"
                             : item.uptimePct >= 95
-                            ? "text-amber-600"
-                            : "text-rose-600"
+                            ? "text-amber-400"
+                            : "text-rose-400"
                         }`}
                       >
                         Uptime: {item.uptimePct}%
                       </div>
-                      <div className="text-neutral-500 text-[11px]">
+                      <div className="text-zinc-500 text-[11px]">
                         Checks: {item.checks} &bull; Failures: {item.failures}
                       </div>
                     </div>
@@ -88,10 +88,10 @@ export function UptimeChart({ data }: UptimeChartProps) {
                   key={`cell-${index}`}
                   fill={
                     entry.uptimePct >= 99
-                      ? "#10b981"
+                      ? "rgba(34, 197, 94, 0.75)"
                       : entry.uptimePct >= 95
-                      ? "#f59e0b"
-                      : "#ef4444"
+                      ? "rgba(245, 158, 11, 0.75)"
+                      : "rgba(239, 68, 68, 0.75)"
                   }
                 />
               ))}
@@ -101,8 +101,8 @@ export function UptimeChart({ data }: UptimeChartProps) {
       </div>
 
       {formattedData.length === 1 && (
-        <p className="text-[11px] text-neutral-400 text-center pt-2">
-          1 bucket recorded. Uptime bars will form as additional checks are recorded.
+        <p className="text-[11px] text-zinc-500 text-center pt-2">
+          1 data point recorded. Click <strong>"Test Ping Now"</strong> above to record more pings immediately.
         </p>
       )}
     </div>

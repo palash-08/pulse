@@ -1,4 +1,5 @@
 import React from "react";
+import { Glass, GlassButton } from "glaceui";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -26,33 +27,35 @@ export function ConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-neutral-200 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      <Glass
+        tone="dark"
+        radius={24}
+        className="max-w-sm w-full p-6 space-y-4 shadow-2xl border border-white/10"
+      >
         <div>
-          <h3 className="text-xl font-serif font-bold text-neutral-900">{title}</h3>
-          <p className="text-xs text-neutral-600 mt-1.5 leading-relaxed">{message}</p>
+          <h3 className="text-xl font-serif font-bold text-zinc-100">{title}</h3>
+          <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">{message}</p>
         </div>
         {children}
-        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
+        <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors"
+            className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white glace-pill transition-colors"
           >
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
+          <GlassButton
+            tone="dark"
+            size="sm"
             disabled={disabled}
-            className={`px-4 py-2 text-xs font-medium rounded-full text-white transition-all shadow-xs active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
-              isDestructive
-                ? "bg-rose-600 hover:bg-rose-700"
-                : "bg-neutral-900 hover:bg-black"
-            }`}
+            onClick={onConfirm}
+            className={isDestructive ? "!bg-rose-500/25 !text-rose-200 !border-rose-500/40" : ""}
           >
             {confirmLabel}
-          </button>
+          </GlassButton>
         </div>
-      </div>
+      </Glass>
     </div>
   );
 }
