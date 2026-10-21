@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Link as LinkIcon,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import {
   getMonitor,
@@ -21,6 +22,8 @@ import {
   enableReportLink,
   disableReportLink,
   deleteMonitor,
+  getMonitorSsl,
+  checkMonitorSsl,
 } from "../api/monitors.js";
 import {
   MonitorSummary,
@@ -28,6 +31,7 @@ import {
   UptimeSummary,
   ChartData,
   Check as CheckType,
+  MonitorSslResponse,
 } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";
 import { StatusBadge } from "../components/ui/StatusBadge.js";
@@ -37,6 +41,7 @@ import { Pagination } from "../components/ui/Pagination.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
 import { ResponseTimeChart } from "../components/charts/ResponseTimeChart.js";
 import { UptimeChart } from "../components/charts/UptimeChart.js";
+import { SslCertificateCard } from "../components/ssl/SslCertificateCard.js";
 
 export function MonitorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +54,11 @@ export function MonitorDetailPage() {
   const [summary, setSummary] = useState<UptimeSummary | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [rotatingToken, setRotatingToken] = useState(false);
+
+  // SSL State
+  const [sslData, setSslData] = useState<MonitorSslResponse | null>(null);
+  const [checkingSsl, setCheckingSsl] = useState(false);
+  const [sslSuccessMessage, setSslSuccessMessage] = useState<string | null>(null);
 
   // History table
   const [historyItems, setHistoryItems] = useState<CheckType[]>([]);
@@ -83,6 +93,16 @@ export function MonitorDetailPage() {
       setHistoryItems(historyRes.items);
       setHistoryTotal(historyRes.total);
       setError(null);
+
+      // Fetch SSL info if monitor uses HTTPS
+      if (monitorRes.monitor.url.toLowerCase().startsWith("https://")) {
+        try {
+          const sslRes = await getMonitorSsl(monitorId);
+          setSslData(sslRes);
+        } catch {
+          // background SSL failure ignored
+        }
+      }
     } catch (err: any) {
       if (!isBackground) setError(err.message || "Failed to load monitor details");
     } finally {
@@ -105,6 +125,27 @@ export function MonitorDetailPage() {
       alert(`Manual check failed: ${err.message}`);
     } finally {
       setChecking(false);
+    }
+  };
+
+  const handleRefreshSsl = async () => {
+    try {
+      setCheckingSsl(true);
+      setSslSuccessMessage(null);
+      const res = await checkMonitorSsl(monitorId);
+      if (res.check) {
+        setSslData((prev) => ({
+          isHttps: true,
+          latest: res.check,
+          history: prev ? [res.check!, ...prev.history.slice(0, 19)] : [res.check!],
+        }));
+        setSslSuccessMessage("SSL certificate successfully inspected!");
+        setTimeout(() => setSslSuccessMessage(null), 4000);
+      }
+    } catch (err: any) {
+      alert(`SSL check failed: ${err.message}`);
+    } finally {
+      setCheckingSsl(false);
     }
   };
 
@@ -216,6 +257,12 @@ export function MonitorDetailPage() {
                   Simulated Target (localhost:4100)
                 </span>
               )}
+              <Link
+                to="/account"
+                className="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1 transition-colors"
+              >
+                <Bell className="w-3 h-3 text-indigo-600" /> Discord Alerts Active
+              </Link>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-mono">
               <a
@@ -258,13 +305,13 @@ export function MonitorDetailPage() {
               </div>
             </div>
 
-            {monitor.reportsEnabled && monitor.reportToken ? (
+            {monitor.reportsEnabled ? (
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={`${window.location.origin}/report/${monitor.reportToken}`}
-                  className="bg-white px-3 py-1.5 border border-neutral-200 rounded-full text-[11px] text-neutral-600 flex-1 select-all focus:outline-none"
+                  className="bg-white border border-neutral-200 rounded-full px-3 py-1.5 text-[11px] font-mono text-neutral-600 flex-1 select-all outline-none"
                 />
                 <button
                   onClick={handleCopyReportLink}
@@ -281,7 +328,6 @@ export function MonitorDetailPage() {
             )}
           </div>
         </div>
-
 
         {/* Active Open Incident Notice */}
         {openIncident && (
@@ -304,6 +350,15 @@ export function MonitorDetailPage() {
           </div>
         )}
       </div>
+
+      {/* SSL / TLS Certificate Tracker */}
+      <SslCertificateCard
+        isHttps={monitor.url.toLowerCase().startsWith("https://")}
+        ssl={sslData?.latest || null}
+        onRefreshSsl={handleRefreshSsl}
+        refreshing={checkingSsl}
+        successMessage={sslSuccessMessage}
+      />
 
       {/* Summary Stats & Range Selector */}
       <div className="space-y-4">
@@ -378,126 +433,136 @@ export function MonitorDetailPage() {
 
       {summary && summary.totalChecks === 0 && (
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 text-xs text-neutral-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="font-semibold text-neutral-900 block">
-              Newly added monitor: No checks recorded yet
-            </span>
-            <p className="text-neutral-500 leading-relaxed max-w-xl">
-              Pulse pings this URL automatically every {monitor?.checkIntervalSeconds}s. Click <strong>"Test Ping Now"</strong> to send an immediate ping and generate response time curves on the graphs below.
+          <div>
+            <span className="font-semibold text-neutral-900">No health checks in the last {range}.</span>
+            <p className="text-neutral-400 text-[11px] mt-0.5">
+              The service scheduler or manual checks will populate metrics over time.
             </p>
           </div>
           <button
             onClick={handleRunCheck}
             disabled={checking}
-            className="px-4 py-2 bg-neutral-900 hover:bg-black text-white rounded-full font-medium transition-all shadow-xs shrink-0 disabled:opacity-50"
+            className="px-4 py-2 bg-neutral-900 text-white rounded-full font-medium hover:bg-black transition-colors flex-shrink-0"
           >
-            {checking ? "Pinging..." : "Test Ping Now"}
+            Run Initial Check
           </button>
         </div>
       )}
 
-      {/* Recharts Visualizations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-xs">
-          <h3 className="text-sm font-semibold text-neutral-900">Response Latency Trend ({range.toUpperCase()})</h3>
-          <p className="text-xs text-neutral-400 mb-2">Average response time over interval buckets</p>
-          <ResponseTimeChart data={chartData?.points || []} />
+      {/* Visual Charts */}
+      {chartData && (
+        <div className="space-y-6">
+          <ResponseTimeChart data={chartData.points} />
+          <UptimeChart data={chartData.points} />
         </div>
+      )}
 
-        <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-xs">
-          <h3 className="text-sm font-semibold text-neutral-900">Uptime Stability ({range.toUpperCase()})</h3>
-          <p className="text-xs text-neutral-400 mb-2">Percentage uptime ratio by time bucket</p>
-          <UptimeChart data={chartData?.points || []} />
-        </div>
-      </div>
-
-      {/* Health Check History Table */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Health Checks History Table */}
+      <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
+        <div className="p-6 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-serif font-bold text-neutral-900">Health Check History</h2>
-            <p className="text-xs text-neutral-400">Detailed chronological log of all checks executed</p>
+            <h3 className="font-serif font-bold text-lg text-neutral-900">Check History</h3>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Raw execution log recorded chronologically by the background checker.
+            </p>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {(["all", "up", "down"] as const).map((res) => {
-              const isSelected = res === "all" ? resultFilter === undefined : resultFilter === res;
-              return (
-                <button
-                  key={res}
-                  onClick={() => {
-                    setHistoryPage(1);
-                    setResultFilter(res === "all" ? undefined : res);
-                  }}
-                  className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
-                    isSelected
-                      ? "bg-neutral-900 text-white shadow-xs"
-                      : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-                  }`}
-                >
-                  {res}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-full text-xs font-medium self-start sm:self-auto">
+            <button
+              onClick={() => {
+                setResultFilter(undefined);
+                setHistoryPage(1);
+              }}
+              className={`px-3 py-1 rounded-full transition-all ${
+                resultFilter === undefined
+                  ? "bg-neutral-900 text-white shadow-xs"
+                  : "text-neutral-600 hover:text-neutral-900"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => {
+                setResultFilter("up");
+                setHistoryPage(1);
+              }}
+              className={`px-3 py-1 rounded-full transition-all ${
+                resultFilter === "up"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-neutral-600 hover:text-neutral-900"
+              }`}
+            >
+              Successful
+            </button>
+            <button
+              onClick={() => {
+                setResultFilter("down");
+                setHistoryPage(1);
+              }}
+              className={`px-3 py-1 rounded-full transition-all ${
+                resultFilter === "down"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "text-neutral-600 hover:text-neutral-900"
+              }`}
+            >
+              Failed
+            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-neutral-200 text-xs">
-              <thead className="bg-neutral-50/75 text-neutral-500 text-[11px] font-semibold uppercase tracking-wider">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-neutral-200 text-xs">
+            <thead className="bg-neutral-50/75 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              <tr>
+                <th scope="col" className="px-6 py-3.5 text-left">Time</th>
+                <th scope="col" className="px-6 py-3.5 text-left">Result</th>
+                <th scope="col" className="px-6 py-3.5 text-left">HTTP Status</th>
+                <th scope="col" className="px-6 py-3.5 text-left">Response Time</th>
+                <th scope="col" className="px-6 py-3.5 text-left">Trigger</th>
+                <th scope="col" className="px-6 py-3.5 text-left">Error Summary</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100 bg-white">
+              {historyItems.length === 0 ? (
                 <tr>
-                  <th scope="col" className="px-6 py-3.5 text-left">Time</th>
-                  <th scope="col" className="px-6 py-3.5 text-left">Result</th>
-                  <th scope="col" className="px-6 py-3.5 text-left">HTTP Status</th>
-                  <th scope="col" className="px-6 py-3.5 text-left">Response Time</th>
-                  <th scope="col" className="px-6 py-3.5 text-left">Trigger</th>
-                  <th scope="col" className="px-6 py-3.5 text-left">Error Summary</th>
+                  <td colSpan={6} className="px-6 py-8 text-center text-neutral-400">
+                    No health checks recorded matching filter.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 bg-white">
-                {historyItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-neutral-400">
-                      No health checks recorded matching filter.
+              ) : (
+                historyItems.map((chk) => (
+                  <tr key={chk.id} className="hover:bg-neutral-50/50 transition-colors">
+                    <td className="px-6 py-3.5 whitespace-nowrap text-neutral-600 font-mono">
+                      {new Date(chk.checkedAt).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap">
+                      <StatusBadge status={chk.isSuccessful ? "up" : "down"} size="sm" />
+                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap font-mono text-neutral-700">
+                      {chk.statusCode ?? "—"}
+                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap font-mono text-neutral-800">
+                      {chk.responseTimeMs !== null ? `${chk.responseTimeMs} ms` : "—"}
+                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap capitalize text-neutral-500">
+                      {chk.trigger}
+                    </td>
+                    <td className="px-6 py-3.5 text-xs text-rose-600 font-mono max-w-sm">
+                      <span className="truncate block max-w-xs sm:max-w-md" title={chk.errorSummary || undefined}>{chk.errorSummary || "—"}</span>
                     </td>
                   </tr>
-                ) : (
-                  historyItems.map((chk) => (
-                    <tr key={chk.id} className="hover:bg-neutral-50/50 transition-colors">
-                      <td className="px-6 py-3.5 whitespace-nowrap text-neutral-600 font-mono">
-                        {new Date(chk.checkedAt).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap">
-                        <StatusBadge status={chk.isSuccessful ? "up" : "down"} size="sm" />
-                      </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-neutral-700">
-                        {chk.statusCode ?? "—"}
-                      </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-neutral-800">
-                        {chk.responseTimeMs !== null ? `${chk.responseTimeMs} ms` : "—"}
-                      </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap capitalize text-neutral-500">
-                        {chk.trigger}
-                      </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap text-rose-600 font-mono">
-                        {chk.errorSummary || "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-
-          <Pagination
-            page={historyPage}
-            pageSize={15}
-            total={historyTotal}
-            onPageChange={(p) => setHistoryPage(p)}
-          />
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+        <Pagination
+          page={historyPage}
+          pageSize={15}
+          total={historyTotal}
+          onPageChange={(p) => setHistoryPage(p)}
+        />
       </div>
 
       {/* Delete Confirmation */}
