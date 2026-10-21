@@ -22,6 +22,8 @@ export interface MonitorSummary {
   reportsEnabled: boolean;
   reportToken: string | null;
   recentReports15m: number;
+  sslDaysRemaining?: number | null;
+  sslIsValid?: boolean | null;
   createdAt: string;
 }
 
@@ -102,6 +104,56 @@ export interface UptimeSummary {
   minResponseMs: number;
   maxResponseMs: number;
   incidentCount: number;
+}
+
+export interface SslCheck {
+  id: number;
+  monitorId: number;
+  checkedAt: string;
+  isValid: boolean;
+  issuer: string | null;
+  subject: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  daysRemaining: number | null;
+  protocol: string | null;
+  errorMessage: string | null;
+}
+
+export interface MonitorSslResponse {
+  isHttps: boolean;
+  latest: SslCheck | null;
+  history: SslCheck[];
+}
+
+export interface AlertContact {
+  id: number;
+  userId: number;
+  type: string;
+  name: string;
+  webhookUrl: string;
+  maskedWebhookUrl: string;
+  isActive: boolean;
+  cooldownMinutes: number;
+  notifyOnDown: boolean;
+  notifyOnRecovery: boolean;
+  notifyOnSslExpiry: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlertLog {
+  id: number;
+  contactId: number | null;
+  contactName: string | null;
+  monitorId: number;
+  monitorName: string;
+  incidentId: number | null;
+  eventType: "down" | "recovery" | "ssl_expiry" | "test";
+  deliveryStatus: "success" | "failed";
+  statusCode: number | null;
+  errorMessage: string | null;
+  sentAt: string;
 }
 
 export interface PaginatedResponse<T> {
