@@ -195,17 +195,17 @@ export function DashboardPage() {
               <div className="divide-y divide-neutral-100">
                 {monitors.map((m) => (
                   <div key={m.id} className="p-4 flex items-center justify-between hover:bg-neutral-50/50 transition-colors">
-                    <div className="space-y-1 min-w-0 pr-4">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1 min-w-0 pr-4 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Link
                           to={`/monitors/${m.id}`}
-                          className="font-medium text-neutral-900 hover:underline truncate text-sm"
+                          className="font-medium text-neutral-900 text-sm hover:underline truncate max-w-xs"
                         >
                           {m.name}
                         </Link>
                         {m.isSimulatedTarget && (
-                          <span className="text-[10px] bg-neutral-100 text-neutral-600 border border-neutral-200 px-2 py-0.5 rounded-full font-mono">
-                            Simulated Target
+                          <span className="text-[10px] bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full font-mono">
+                            demo
                           </span>
                         )}
                         {m.recentReports15m > 0 && (
@@ -214,14 +214,16 @@ export function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-neutral-500 truncate">{m.url}</div>
-                      <div className="text-[11px] text-neutral-400 flex items-center gap-2">
-                        <span>Check every {m.checkIntervalSeconds}s</span>
+                      <div className="text-xs text-neutral-500 truncate max-w-sm">{m.url}</div>
+                      <div className="text-[11px] text-neutral-400 flex items-center gap-2 flex-wrap">
+                        <span className="whitespace-nowrap">Check every {m.checkIntervalSeconds}s</span>
                         {m.lastResponseTimeMs !== null && (
-                          <span>&bull; {m.lastResponseTimeMs}ms latency</span>
+                          <span className="whitespace-nowrap">&bull; {m.lastResponseTimeMs}ms latency</span>
                         )}
                         {m.lastError && (
-                          <span className="text-rose-600 font-medium">&bull; {m.lastError}</span>
+                          <span className="text-rose-600 font-medium truncate max-w-[220px]" title={m.lastError}>
+                            &bull; {m.lastError}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -251,21 +253,28 @@ export function DashboardPage() {
             <span className="text-xs text-neutral-400 font-mono">Live stream</span>
           </div>
 
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs p-5 divide-y divide-neutral-100">
+          <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs p-5 divide-y divide-neutral-100 overflow-hidden">
             {recentChecks.length === 0 ? (
               <div className="py-8 text-center text-xs text-neutral-400">No recent checks recorded.</div>
             ) : (
               recentChecks.map((c) => (
-                <div key={c.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
-                  <div className="space-y-0.5 min-w-0 pr-2">
-                    <div className="font-medium text-neutral-800 truncate">{c.monitorName}</div>
-                    <div className="text-neutral-400 text-[11px]">
-                      {new Date(c.checkedAt).toLocaleTimeString()} &bull; {c.trigger}
+                <div key={c.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="font-medium text-neutral-800 truncate" title={c.monitorName}>
+                      {c.monitorName}
+                    </div>
+                    <div className="text-neutral-400 text-[11px] whitespace-nowrap truncate">
+                      {new Date(c.checkedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })} &bull; {c.trigger}
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
+                  <div className="text-right flex-shrink-0 max-w-[55%]">
                     <StatusBadge status={c.isSuccessful ? "up" : "down"} size="sm" />
-                    <div className="text-[11px] text-neutral-400 mt-0.5 font-mono">
+                    <div
+                      className={`text-[11px] mt-0.5 font-mono truncate ${
+                        c.isSuccessful ? "text-neutral-400" : "text-rose-600 font-medium"
+                      }`}
+                      title={c.errorSummary || undefined}
+                    >
                       {c.responseTimeMs !== null ? `${c.responseTimeMs} ms` : c.errorSummary || "Error"}
                     </div>
                   </div>
@@ -277,5 +286,4 @@ export function DashboardPage() {
       </div>
     </div>
   );
-
 }

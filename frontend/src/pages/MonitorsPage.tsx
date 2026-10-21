@@ -207,11 +207,11 @@ export function MonitorsPage() {
                       {m.lastCheckedAt ? new Date(m.lastCheckedAt).toLocaleTimeString() : "Never"}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs max-w-xs">
                       {m.lastResponseTimeMs !== null ? (
                         <span className="font-mono text-neutral-800">{m.lastResponseTimeMs} ms</span>
                       ) : m.lastError ? (
-                        <span className="text-rose-600">{m.lastError}</span>
+                        <span className="text-rose-600 truncate block max-w-[200px]" title={m.lastError}>{m.lastError}</span>
                       ) : (
                         <span className="text-neutral-400">&mdash;</span>
                       )}
