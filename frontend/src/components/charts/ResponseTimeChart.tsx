@@ -35,7 +35,7 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
     <div className="h-64 w-full pt-2 flex flex-col justify-between">
       <div className="flex-1 w-full min-h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id="responseTimeGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#18181b" stopOpacity={0.15} />
@@ -56,6 +56,7 @@ export function ResponseTimeChart({ data }: ResponseTimeChartProps) {
               tickLine={false}
               axisLine={{ stroke: "#e5e5e5" }}
               unit="ms"
+              width={65}
             />
             <Tooltip
               content={({ active, payload }) => {

@@ -36,7 +36,7 @@ export function UptimeChart({ data }: UptimeChartProps) {
     <div className="h-64 w-full pt-2 flex flex-col justify-between">
       <div className="flex-1 w-full min-h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <BarChart data={formattedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis
               dataKey="label"
@@ -52,6 +52,7 @@ export function UptimeChart({ data }: UptimeChartProps) {
               axisLine={{ stroke: "#e5e5e5" }}
               domain={[0, 100]}
               unit="%"
+              width={50}
             />
             <Tooltip
               content={({ active, payload }) => {
