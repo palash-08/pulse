@@ -6,6 +6,8 @@ import {
   ChartData,
   UptimeSummary,
   PaginatedResponse,
+  MonitorSslResponse,
+  SslCheck,
 } from "./types.js";
 
 export function listMonitors(params?: {
@@ -83,4 +85,14 @@ export function enableReportLink(id: number) {
 
 export function disableReportLink(id: number) {
   return apiClient.delete<void>(`/monitors/${id}/report-link`);
+}
+
+export function getMonitorSsl(id: number) {
+  return apiClient.get<MonitorSslResponse>(`/monitors/${id}/ssl`);
+}
+
+export function checkMonitorSsl(id: number) {
+  return apiClient.post<{ check: SslCheck | null; isApplicable: boolean }>(
+    `/monitors/${id}/ssl/check`
+  );
 }
