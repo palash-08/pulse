@@ -94,8 +94,13 @@ export async function dispatchOutageAlert(params: OutageAlertParams): Promise<vo
       startedAt: params.startedAt,
     });
 
+    const seenWebhooks = new Set<string>();
     for (const contact of contacts) {
       if (!contact.notifyOnDown) continue;
+      if (seenWebhooks.has(contact.webhookUrl)) {
+        continue; // Deduplicate to avoid sending duplicate alerts to the same webhook
+      }
+      seenWebhooks.add(contact.webhookUrl);
 
       const cooldown = await isWithinCooldown(
         contact.id,
@@ -160,8 +165,13 @@ export async function dispatchRecoveryAlert(params: RecoveryAlertParams): Promis
       resolvedAt: params.resolvedAt,
     });
 
+    const seenWebhooks = new Set<string>();
     for (const contact of contacts) {
       if (!contact.notifyOnRecovery) continue;
+      if (seenWebhooks.has(contact.webhookUrl)) {
+        continue; // Deduplicate to avoid sending duplicate alerts to the same webhook
+      }
+      seenWebhooks.add(contact.webhookUrl);
 
       const cooldown = await isWithinCooldown(
         contact.id,
@@ -227,8 +237,13 @@ export async function dispatchSslExpiryAlert(params: SslExpiryAlertParams): Prom
       isExpired: params.isExpired,
     });
 
+    const seenWebhooks = new Set<string>();
     for (const contact of contacts) {
       if (!contact.notifyOnSslExpiry) continue;
+      if (seenWebhooks.has(contact.webhookUrl)) {
+        continue; // Deduplicate to avoid sending duplicate alerts to the same webhook
+      }
+      seenWebhooks.add(contact.webhookUrl);
 
       // For SSL expiry, cooldown is enforced so we don't alert more than once every 24 hours (1440 min)
       const cooldown = await isWithinCooldown(
