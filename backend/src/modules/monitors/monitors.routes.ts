@@ -21,6 +21,8 @@ import {
   responseTimesHandler,
   enableReportLinkHandler,
   disableReportLinkHandler,
+  getSslHandler,
+  checkSslHandler,
 } from "./monitors.controller.js";
 
 const router = Router();
@@ -41,5 +43,9 @@ router.get("/:id/response-times", validate({ query: rangeQuerySchema }), respons
 
 router.post("/:id/report-link", enableReportLinkHandler);
 router.delete("/:id/report-link", disableReportLinkHandler);
+
+// SSL Certificate tracking routes
+router.get("/:id/ssl", getSslHandler);
+router.post("/:id/ssl/check", manualCheckRateLimit, checkSslHandler);
 
 export default router;
