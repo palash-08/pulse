@@ -34,43 +34,39 @@ export async function executeCheck(
   // 2. Perform network check OUTSIDE of any database transaction
   const checkResult = await performHealthCheck(monitorRecord.url);
 
-  // 3. In one transaction: insert health_checks (trigger updates incidents)
-  //    and read back v_monitor_status & open incident
-  const result = await db.transaction(async (tx) => {
-    const [insertedCheck] = await tx
-      .insert(healthChecks)
-      .values({
-        monitorId,
-        isSuccessful: checkResult.isSuccessful,
-        statusCode: checkResult.statusCode,
-        responseTimeMs: checkResult.responseTimeMs,
-        errorSummary: checkResult.errorSummary,
-        triggerSource,
-      })
-      .returning();
+  // 3. Insert health check row (trigger updates incidents and monitor state)
+  const [insertedCheck] = await db
+    .insert(healthChecks)
+    .values({
+      monitorId,
+      isSuccessful: checkResult.isSuccessful,
+      statusCode: checkResult.statusCode,
+      responseTimeMs: checkResult.responseTimeMs,
+      errorSummary: checkResult.errorSummary,
+      triggerSource,
+    })
+    .returning();
 
-    // Read back monitor summary from view
-    const monitorSummary = await getMonitorStatus(monitorRecord.ownerId, monitorId);
-    // Read back any open incident
-    const openIncident = await getOpenIncident(monitorId);
+  // Read back monitor summary and open incident AFTER check is committed so trigger changes are visible
+  const monitorSummary = await getMonitorStatus(monitorRecord.ownerId, monitorId);
+  const openIncident = await getOpenIncident(monitorId);
 
-    return {
-      check: {
-        id: insertedCheck.id,
-        monitorId: insertedCheck.monitorId,
-        checkedAt: insertedCheck.checkedAt instanceof Date
-          ? insertedCheck.checkedAt.toISOString()
-          : new Date(insertedCheck.checkedAt).toISOString(),
-        isSuccessful: insertedCheck.isSuccessful,
-        statusCode: insertedCheck.statusCode,
-        responseTimeMs: insertedCheck.responseTimeMs,
-        errorSummary: insertedCheck.errorSummary,
-        trigger: insertedCheck.triggerSource,
-      },
-      monitor: monitorSummary,
-      openIncident,
-    };
-  });
+  const result = {
+    check: {
+      id: insertedCheck.id,
+      monitorId: insertedCheck.monitorId,
+      checkedAt: insertedCheck.checkedAt instanceof Date
+        ? insertedCheck.checkedAt.toISOString()
+        : new Date(insertedCheck.checkedAt).toISOString(),
+      isSuccessful: insertedCheck.isSuccessful,
+      statusCode: insertedCheck.statusCode,
+      responseTimeMs: insertedCheck.responseTimeMs,
+      errorSummary: insertedCheck.errorSummary,
+      trigger: insertedCheck.triggerSource,
+    },
+    monitor: monitorSummary,
+    openIncident,
+  };
 
   // 4. Alert dispatching on incident state transitions
   if (!openIncidentBefore && result.openIncident) {
