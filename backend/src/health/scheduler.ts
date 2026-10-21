@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/client.js";
+import { monitors } from "../db/schema.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { getDueMonitors } from "../db/queries/monitors.js";
 import { executeCheck } from "./checkService.js";
+import { executeSslCheck } from "./sslService.js";
 
 const MAX_CONCURRENT_CHECKS = 5;
 const activeChecks = new Set<number>();
@@ -19,7 +21,7 @@ async function runDailyMaintenance(): Promise<void> {
   lastDailyMaintenance = now;
 
   try {
-    logger.info("🧹 Running daily data retention and guest cleanup...");
+    logger.info("🧹 Running daily data retention, guest cleanup, and SSL certificate sweep...");
     // 1. Purge health checks older than 30 days
     await db.execute(sql`CALL sp_purge_old_checks(30);`);
     // 2. Remove stale guests older than 7 days
@@ -27,6 +29,17 @@ async function runDailyMaintenance(): Promise<void> {
       DELETE FROM users
       WHERE is_guest = true AND created_at < now() - interval '7 days';
     `);
+    // 3. Daily SSL certificate verification for HTTPS targets
+    const httpsMonitors = await db
+      .select({ id: monitors.id })
+      .from(monitors)
+      .where(sql`${monitors.url} ~* '^https://'`);
+    
+    for (const hm of httpsMonitors) {
+      executeSslCheck(hm.id).catch((err) =>
+        logger.error(`Daily SSL sweep failed on monitor ${hm.id}:`, err)
+      );
+    }
     logger.info("✅ Daily maintenance completed successfully.");
   } catch (err) {
     logger.error("❌ Daily maintenance error:", err);

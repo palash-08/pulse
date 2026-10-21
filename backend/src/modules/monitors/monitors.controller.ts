@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as monitorsService from "./monitors.service.js";
+import { executeSslCheck, getMonitorSslStatus } from "../../health/sslService.js";
 import { executeCheck } from "../../health/checkService.js";
 import {
   getMonitorHistory,
@@ -123,6 +124,26 @@ export async function disableReportLinkHandler(req: Request, res: Response, next
     const monitorId = Number(req.params.id);
     await monitorsService.disableReportLink(req.user!.id, monitorId);
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getSslHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const monitorId = Number(req.params.id);
+    const result = await getMonitorSslStatus(monitorId, req.user!.id);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function checkSslHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const monitorId = Number(req.params.id);
+    const result = await executeSslCheck(monitorId, req.user!.id);
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }
