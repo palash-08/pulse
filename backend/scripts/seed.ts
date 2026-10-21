@@ -23,7 +23,7 @@ async function seed() {
     console.log("🌱 Starting deterministic database seeding...");
 
     // 1. Clean existing records
-    await client.query("TRUNCATE TABLE health_checks, incidents, problem_reports, monitors, users, user_sessions CASCADE;");
+    await client.query("TRUNCATE TABLE alert_logs, alert_contacts, ssl_checks, health_checks, incidents, problem_reports, monitors, users, user_sessions CASCADE;");
 
     // 2. Insert Users
     console.log("👤 Creating 10 users (8 registered, 2 guests)...");
@@ -114,21 +114,77 @@ async function seed() {
         let responseTimeMs: number | null = 100 + Math.floor(Math.sin(step + mIdx) * 40) + (mIdx * 15);
         let errorSummary: string | null = null;
 
-        // Scripted outages:
-        // Shop API has outages at step 120-123 and 240-242
-        if (mId === shopApiId && ((step >= 120 && step <= 123) || (step >= 240 && step <= 242))) {
+        // Scripted outages (producing 14 distinct incidents across the 7-day timeline):
+        // 1. Shop API: 3 incidents (steps 60-62, 120-123, 240-242)
+        if (mId === shopApiId && ((step >= 60 && step <= 62) || (step >= 120 && step <= 123) || (step >= 240 && step <= 242))) {
           isSuccessful = false;
           statusCode = 503;
           responseTimeMs = null;
           errorSummary = "HTTP 503 Service Unavailable";
         }
 
-        // Billing API has outage at step 160-162
-        if (mId === billingApiId && step >= 160 && step <= 162) {
+        // 2. Auth Service: 2 incidents (steps 40-41, 200-202)
+        if (mId === monitorIds[1] && ((step >= 40 && step <= 41) || (step >= 200 && step <= 202))) {
+          isSuccessful = false;
+          statusCode = 502;
+          responseTimeMs = null;
+          errorSummary = "HTTP 502 Bad Gateway (upstream auth worker unreachable)";
+        }
+
+        // 3. Billing API: 2 incidents (steps 90-92, 160-162)
+        if (mId === billingApiId && ((step >= 90 && step <= 92) || (step >= 160 && step <= 162))) {
           isSuccessful = false;
           statusCode = null;
           responseTimeMs = null;
           errorSummary = "Connection timed out after 10000ms";
+        }
+
+        // 4. Search Index: 1 incident (steps 140-142)
+        if (mId === monitorIds[3] && step >= 140 && step <= 142) {
+          isSuccessful = false;
+          statusCode = 504;
+          responseTimeMs = null;
+          errorSummary = "HTTP 504 Gateway Timeout";
+        }
+
+        // 5. Customer Portal: 2 incidents (steps 80-82, 220-222)
+        if (mId === monitorIds[5] && ((step >= 80 && step <= 82) || (step >= 220 && step <= 222))) {
+          isSuccessful = false;
+          statusCode = 500;
+          responseTimeMs = null;
+          errorSummary = "HTTP 500 Internal Server Error";
+        }
+
+        // 6. Alice Blog: 1 incident (steps 70-71)
+        if (mId === monitorIds[8] && step >= 70 && step <= 71) {
+          isSuccessful = false;
+          statusCode = 521;
+          responseTimeMs = null;
+          errorSummary = "Web server is down";
+        }
+
+        // 7. Bob Webhook: 1 incident (steps 180-182)
+        if (mId === monitorIds[9] && step >= 180 && step <= 182) {
+          isSuccessful = false;
+          statusCode = 429;
+          responseTimeMs = null;
+          errorSummary = "HTTP 429 Too Many Requests";
+        }
+
+        // 8. Carol Store: 1 incident (steps 260-262)
+        if (mId === monitorIds[10] && step >= 260 && step <= 262) {
+          isSuccessful = false;
+          statusCode = 503;
+          responseTimeMs = null;
+          errorSummary = "HTTP 503 Service Unavailable";
+        }
+
+        // 9. Guest Site Alpha: 1 open incident near the end (steps 330-335)
+        if (mId === monitorIds[12] && step >= 330) {
+          isSuccessful = false;
+          statusCode = 503;
+          responseTimeMs = null;
+          errorSummary = "HTTP 503 Service Unavailable (DNS failure)";
         }
 
         await client.query(
@@ -163,6 +219,39 @@ async function seed() {
         [r.monitorId, r.category, r.desc, r.email, r.status]
       );
     }
+
+    // 6. Alert Contacts (Discord Webhook Destinations)
+    console.log("🔔 Creating Discord alert contacts...");
+    const contactRes = await client.query(
+      `INSERT INTO alert_contacts (user_id, type, name, webhook_url, is_active, cooldown_minutes, notify_on_down, notify_on_recovery, notify_on_ssl_expiry)
+       VALUES ($1, 'discord', 'DevOps Team Alerts', 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz0123456789_sample_token', true, 15, true, true, true)
+       RETURNING id`,
+      [demoUserId]
+    );
+    const demoContactId = contactRes.rows[0].id;
+
+    // 7. SSL Certificate Checks
+    console.log("🔒 Seeding SSL certificate inspection data...");
+    await client.query(
+      `INSERT INTO ssl_checks (monitor_id, checked_at, is_valid, issuer, subject, valid_from, valid_to, days_remaining, protocol, error_message)
+       VALUES
+       ($1, now() - interval '1 hour', true, 'Let''s Encrypt Authority X3 (R3)', 'CN=api.pulse.dev', now() - interval '30 days', now() + interval '60 days', 60, 'TLSv1.3', null),
+       ($2, now() - interval '1 hour', true, 'DigiCert Global Root G2', 'CN=auth.pulse.dev', now() - interval '200 days', now() + interval '12 days', 12, 'TLSv1.3', null)`,
+      [shopApiId, billingApiId]
+    );
+
+    // 8. Alert Logs
+    console.log("📜 Seeding alert delivery logs...");
+    await client.query(
+      `INSERT INTO alert_logs (contact_id, monitor_id, event_type, delivery_status, status_code, sent_at)
+       VALUES
+       ($1, $2, 'down', 'success', 204, now() - interval '3 days'),
+       ($1, $2, 'recovery', 'success', 204, now() - interval '3 days' + interval '6 minutes'),
+       ($1, $3, 'down', 'success', 204, now() - interval '1 day'),
+       ($1, $3, 'recovery', 'success', 204, now() - interval '1 day' + interval '8 minutes'),
+       ($1, $3, 'ssl_expiry', 'success', 204, now() - interval '2 hours')`,
+      [demoContactId, shopApiId, billingApiId]
+    );
 
     console.log("✅ Seeding completed successfully!");
     console.log("🔑 Demo account credentials:");
