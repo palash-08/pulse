@@ -21,6 +21,7 @@ import reportsRoutes from "./modules/reports/reports.routes.js";
 import publicRoutes from "./modules/public/public.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import alertsRoutes from "./modules/alerts/alerts.routes.js";
+import probeRoutes from "./modules/probes/probes.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +74,7 @@ export function createApp() {
   app.use("/api/public", publicRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/alerts", alertsRoutes);
+  app.use("/api/internal", probeRoutes);
 
   // 5. Production static serving
   if (env.NODE_ENV === "production") {

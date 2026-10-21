@@ -15,6 +15,7 @@ const envSchema = z.object({
   CHECK_TIMEOUT_MS: z.coerce.number().default(10000),
   SSRF_ALLOWLIST: z.string().default("localhost:4100,127.0.0.1:4100"),
   PUBLIC_BASE_URL: z.string().url().default("http://localhost:5173"),
+  INTERNAL_PROBE_API_KEY: z.string().default("pulse_probe_secret_key_123"),
 });
 
 const parsed = envSchema.safeParse(process.env);

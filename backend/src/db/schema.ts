@@ -73,9 +73,12 @@ export const healthChecks = pgTable(
     responseTimeMs: integer("response_time_ms"),
     errorSummary: varchar("error_summary", { length: 500 }),
     triggerSource: varchar("trigger_source", { length: 10 }).notNull().default("scheduled"),
+    probeId: varchar("probe_id", { length: 100 }),
+    region: varchar("region", { length: 100 }),
   },
   (t) => [
     index("health_checks_monitor_time_idx").on(t.monitorId, t.checkedAt.desc()),
+    index("health_checks_probe_time_idx").on(t.monitorId, t.probeId, t.checkedAt.desc()),
     check("hc_status_code_chk", sql`${t.statusCode} IS NULL OR ${t.statusCode} BETWEEN 100 AND 599`),
     check("hc_response_time_chk", sql`${t.responseTimeMs} IS NULL OR ${t.responseTimeMs} >= 0`),
     check(
@@ -83,7 +86,7 @@ export const healthChecks = pgTable(
       sql`(${t.isSuccessful} AND ${t.errorSummary} IS NULL)
        OR (NOT ${t.isSuccessful} AND ${t.errorSummary} IS NOT NULL)`
     ),
-    check("hc_trigger_chk", sql`${t.triggerSource} IN ('scheduled','manual')`),
+    check("hc_trigger_chk", sql`${t.triggerSource} IN ('scheduled','manual','probe')`),
   ]
 );
 
@@ -217,6 +220,14 @@ export const alertLogs = pgTable(
   ]
 );
 
+export const probeNodes = pgTable("probe_nodes", {
+  id: varchar("id", { length: 100 }).primaryKey(),
+  region: varchar("region", { length: 100 }).notNull(),
+  name: varchar("name", { length: 100 }),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
@@ -234,3 +245,5 @@ export type AlertContact = typeof alertContacts.$inferSelect;
 export type NewAlertContact = typeof alertContacts.$inferInsert;
 export type AlertLog = typeof alertLogs.$inferSelect;
 export type NewAlertLog = typeof alertLogs.$inferInsert;
+export type ProbeNode = typeof probeNodes.$inferSelect;
+export type NewProbeNode = typeof probeNodes.$inferInsert;

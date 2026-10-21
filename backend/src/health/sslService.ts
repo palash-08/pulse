@@ -37,7 +37,7 @@ export async function executeSslCheck(
     !inspection.isConnectionError &&
     (
       // Case A: Certificate was retrieved and is expiring in <= 30 days or expired
-      (hasCertificate && inspection.daysRemaining <= 30) ||
+      (hasCertificate && inspection.daysRemaining !== null && inspection.daysRemaining <= 30) ||
       // Case B: Certificate was presented by the server but is untrusted / invalid chain
       (!inspection.isValid && (hasCertificate || inspection.issuer !== null))
     );

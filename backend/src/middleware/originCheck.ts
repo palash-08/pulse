@@ -5,8 +5,12 @@ import { AppError } from "../lib/errors.js";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function originCheck(req: Request, _res: Response, next: NextFunction) {
-  // Public endpoints have no origin check
-  if (req.path.startsWith("/api/public") || req.path === "/api/health") {
+  // Public endpoints and internal probe API endpoints have no origin check
+  if (
+    req.path.startsWith("/api/public") ||
+    req.path === "/api/health" ||
+    req.path.startsWith("/api/internal")
+  ) {
     return next();
   }
 
