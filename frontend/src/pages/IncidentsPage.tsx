@@ -152,8 +152,8 @@ export function IncidentsPage() {
                         : `${inc.durationSeconds}s`}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-rose-600 font-mono">
-                      {inc.firstError || "—"}
+                    <td className="px-6 py-4 text-xs text-rose-600 font-mono max-w-xs">
+                      <span className="truncate block max-w-[260px]" title={inc.firstError || undefined}>{inc.firstError || "—"}</span>
                     </td>
                   </tr>
                 ))}
