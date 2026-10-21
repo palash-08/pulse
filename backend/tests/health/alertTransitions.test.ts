@@ -100,4 +100,30 @@ describe("Alert Dispatcher State Transitions in checkService", () => {
       })
     );
   });
+
+  it("shares in-flight check promise when concurrent checks occur on the same monitor", async () => {
+    let resolveCheck: (val: any) => void;
+    const pendingPromise = new Promise((resolve) => {
+      resolveCheck = resolve;
+    });
+
+    const checkSpy = vi.spyOn(checker, "performHealthCheck").mockImplementationOnce(() => pendingPromise as any);
+
+    // Start check 1 (in-flight)
+    const p1 = executeCheck(monitorId, "scheduled");
+    // Start check 2 concurrently
+    const p2 = executeCheck(monitorId, "manual");
+
+    // Both should receive the exact same resolved check
+    resolveCheck!({
+      isSuccessful: true,
+      statusCode: 200,
+      responseTimeMs: 20,
+      errorSummary: null,
+    });
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.check?.id).toBe(r2.check?.id);
+    expect(checkSpy).toHaveBeenCalledTimes(1);
+  });
 });

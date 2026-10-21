@@ -56,6 +56,20 @@ describe("Alerts & Discord Notification Dispatcher API", () => {
     contactId = res.body.contact.id;
   });
 
+  it("rejects duplicate webhook URL for the same user", async () => {
+    const res = await request(app)
+      .post("/api/alerts/contacts")
+      .set("Cookie", userCookie)
+      .send({
+        name: "Duplicate DevOps Channel",
+        webhookUrl: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_secret",
+        cooldownMinutes: 15,
+      });
+
+    expect(res.status).toBe(422);
+    expect(JSON.stringify(res.body.error)).toContain("already exists");
+  });
+
   it("lists alert contacts with masked webhook URLs", async () => {
     const res = await request(app)
       .get("/api/alerts/contacts")

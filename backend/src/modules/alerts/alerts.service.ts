@@ -1,7 +1,7 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "../../db/client.js";
 import { alertContacts, alertLogs, monitors, AlertContact } from "../../db/schema.js";
-import { NotFoundError } from "../../lib/errors.js";
+import { NotFoundError, ValidationError } from "../../lib/errors.js";
 import { dispatchTestAlert } from "./dispatcher.js";
 
 /**
@@ -63,6 +63,16 @@ export async function createContact(
     notifyOnSslExpiry?: boolean;
   }
 ) {
+  const [existing] = await db
+    .select({ id: alertContacts.id })
+    .from(alertContacts)
+    .where(and(eq(alertContacts.userId, userId), eq(alertContacts.webhookUrl, data.webhookUrl)))
+    .limit(1);
+
+  if (existing) {
+    throw new ValidationError("An alert contact with this Discord webhook URL already exists.");
+  }
+
   const [contact] = await db
     .insert(alertContacts)
     .values({
@@ -103,6 +113,24 @@ export async function updateContact(
 
   if (!existing) {
     throw new NotFoundError("Alert contact not found");
+  }
+
+  if (data.webhookUrl && data.webhookUrl !== existing.webhookUrl) {
+    const [duplicate] = await db
+      .select({ id: alertContacts.id })
+      .from(alertContacts)
+      .where(
+        and(
+          eq(alertContacts.userId, userId),
+          eq(alertContacts.webhookUrl, data.webhookUrl),
+          sql`${alertContacts.id} != ${contactId}`
+        )
+      )
+      .limit(1);
+
+    if (duplicate) {
+      throw new ValidationError("An alert contact with this Discord webhook URL already exists.");
+    }
   }
 
   const [updated] = await db
