@@ -144,6 +144,79 @@ export const userSessions = pgTable(
   (t) => [index("user_sessions_expire_idx").on(t.expire)]
 );
 
+export const sslChecks = pgTable(
+  "ssl_checks",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    monitorId: integer("monitor_id")
+      .notNull()
+      .references(() => monitors.id, { onDelete: "cascade" }),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+    isValid: boolean("is_valid").notNull(),
+    issuer: varchar("issuer", { length: 255 }),
+    subject: varchar("subject", { length: 255 }),
+    validFrom: timestamp("valid_from", { withTimezone: true }),
+    validTo: timestamp("valid_to", { withTimezone: true }),
+    daysRemaining: integer("days_remaining"),
+    protocol: varchar("protocol", { length: 50 }),
+    errorMessage: varchar("error_message", { length: 500 }),
+  },
+  (t) => [
+    index("ssl_checks_monitor_time_idx").on(t.monitorId, t.checkedAt.desc()),
+    check("ssl_days_chk", sql`${t.daysRemaining} IS NULL OR ${t.daysRemaining} BETWEEN -36500 AND 36500`),
+  ]
+);
+
+export const alertContacts = pgTable(
+  "alert_contacts",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull().default("discord"),
+    name: varchar("name", { length: 100 }).notNull(),
+    webhookUrl: varchar("webhook_url", { length: 2048 }).notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    cooldownMinutes: integer("cooldown_minutes").notNull().default(15),
+    notifyOnDown: boolean("notify_on_down").notNull().default(true),
+    notifyOnRecovery: boolean("notify_on_recovery").notNull().default(true),
+    notifyOnSslExpiry: boolean("notify_on_ssl_expiry").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("alert_contacts_user_idx").on(t.userId),
+    check("alert_contacts_type_chk", sql`${t.type} IN ('discord')`),
+    check("alert_contacts_cooldown_chk", sql`${t.cooldownMinutes} BETWEEN 1 AND 1440`),
+    check("alert_contacts_url_chk", sql`${t.webhookUrl} ~* '^https://(discord\\.com|discordapp\\.com)/api/webhooks/'`),
+  ]
+);
+
+export const alertLogs = pgTable(
+  "alert_logs",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    contactId: integer("contact_id").references(() => alertContacts.id, { onDelete: "set null" }),
+    monitorId: integer("monitor_id")
+      .notNull()
+      .references(() => monitors.id, { onDelete: "cascade" }),
+    incidentId: integer("incident_id").references(() => incidents.id, { onDelete: "set null" }),
+    eventType: varchar("event_type", { length: 20 }).notNull(),
+    deliveryStatus: varchar("delivery_status", { length: 10 }).notNull(),
+    statusCode: integer("status_code"),
+    errorMessage: varchar("error_message", { length: 500 }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("alert_logs_monitor_sent_idx").on(t.monitorId, t.sentAt.desc()),
+    index("alert_logs_contact_sent_idx").on(t.contactId, t.sentAt.desc()),
+    index("alert_logs_event_cooldown_idx").on(t.contactId, t.monitorId, t.eventType, t.sentAt.desc()),
+    check("alert_logs_event_chk", sql`${t.eventType} IN ('down','recovery','ssl_expiry','test')`),
+    check("alert_logs_status_chk", sql`${t.deliveryStatus} IN ('success','failed')`),
+  ]
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
@@ -155,3 +228,9 @@ export type NewIncident = typeof incidents.$inferInsert;
 export type ProblemReport = typeof problemReports.$inferSelect;
 export type NewProblemReport = typeof problemReports.$inferInsert;
 export type UserSession = typeof userSessions.$inferSelect;
+export type SslCheck = typeof sslChecks.$inferSelect;
+export type NewSslCheck = typeof sslChecks.$inferInsert;
+export type AlertContact = typeof alertContacts.$inferSelect;
+export type NewAlertContact = typeof alertContacts.$inferInsert;
+export type AlertLog = typeof alertLogs.$inferSelect;
+export type NewAlertLog = typeof alertLogs.$inferInsert;

@@ -1,8 +1,18 @@
 import { relations } from "drizzle-orm";
-import { users, monitors, healthChecks, incidents, problemReports } from "./schema.js";
+import {
+  users,
+  monitors,
+  healthChecks,
+  incidents,
+  problemReports,
+  sslChecks,
+  alertContacts,
+  alertLogs,
+} from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   monitors: many(monitors),
+  alertContacts: many(alertContacts),
 }));
 
 export const monitorsRelations = relations(monitors, ({ one, many }) => ({
@@ -13,6 +23,8 @@ export const monitorsRelations = relations(monitors, ({ one, many }) => ({
   healthChecks: many(healthChecks),
   incidents: many(incidents),
   problemReports: many(problemReports),
+  sslChecks: many(sslChecks),
+  alertLogs: many(alertLogs),
 }));
 
 export const healthChecksRelations = relations(healthChecks, ({ one }) => ({
@@ -33,5 +45,35 @@ export const problemReportsRelations = relations(problemReports, ({ one }) => ({
   monitor: one(monitors, {
     fields: [problemReports.monitorId],
     references: [monitors.id],
+  }),
+}));
+
+export const sslChecksRelations = relations(sslChecks, ({ one }) => ({
+  monitor: one(monitors, {
+    fields: [sslChecks.monitorId],
+    references: [monitors.id],
+  }),
+}));
+
+export const alertContactsRelations = relations(alertContacts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [alertContacts.userId],
+    references: [users.id],
+  }),
+  alertLogs: many(alertLogs),
+}));
+
+export const alertLogsRelations = relations(alertLogs, ({ one }) => ({
+  contact: one(alertContacts, {
+    fields: [alertLogs.contactId],
+    references: [alertContacts.id],
+  }),
+  monitor: one(monitors, {
+    fields: [alertLogs.monitorId],
+    references: [monitors.id],
+  }),
+  incident: one(incidents, {
+    fields: [alertLogs.incidentId],
+    references: [incidents.id],
   }),
 }));
