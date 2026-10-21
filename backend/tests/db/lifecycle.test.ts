@@ -49,11 +49,14 @@ describe("Database Triggers & Lifecycle Engine", () => {
   });
 
   it("handles incident lifecycle purely through PostgreSQL triggers", async () => {
+    // Clean up or use dynamic email
+    const email = `lifecycle-${Date.now()}@pulse.test`;
     // Create registered user and monitor
     const uRes = await client.query(
       `INSERT INTO users (email, display_name, password_hash, is_guest)
-       VALUES ('lifecycle-test@pulse.test', 'Tester', '$argon2id$mock', false)
-       RETURNING id`
+       VALUES ($1, 'Tester', '$argon2id$mock', false)
+       RETURNING id`,
+      [email]
     );
     const userId = uRes.rows[0].id;
 
