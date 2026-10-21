@@ -27,7 +27,45 @@ export async function executeSslCheck(
     return { check: null, isApplicable: false };
   }
 
-  const inspection: SslCheckResult = await inspectSslCertificate(monitor.url);
+  let inspection: SslCheckResult = await inspectSslCertificate(monitor.url);
+
+  // FAILSAFE 1: Distinguish between connection/network failures and genuine certificate issues.
+  // If the host is unreachable, connection refused, timed out, or DNS failed, do NOT dispatch
+  // an SSL alert. (Network/availability issues are handled by health checks and outage alerts).
+  const hasCertificate = inspection.validTo !== null && inspection.daysRemaining !== null;
+  const isCandidateForAlert =
+    !inspection.isConnectionError &&
+    (
+      // Case A: Certificate was retrieved and is expiring in <= 30 days or expired
+      (hasCertificate && inspection.daysRemaining <= 30) ||
+      // Case B: Certificate was presented by the server but is untrusted / invalid chain
+      (!inspection.isValid && (hasCertificate || inspection.issuer !== null))
+    );
+
+  // FAILSAFE 2: Confirmation Retry
+  // If an SSL certificate issue is detected, perform a confirmation retry after a brief delay
+  // to avoid false alarms from transient TLS handshake glitches or server reloads.
+  let confirmedIssue = false;
+  if (isCandidateForAlert) {
+    logger.info(`🔍 Candidate SSL alert for "${monitor.name}". Performing confirmation retry...`);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const retry = await inspectSslCertificate(monitor.url);
+
+    if (
+      !retry.isConnectionError &&
+      (
+        (retry.daysRemaining !== null && retry.daysRemaining <= 30) ||
+        (!retry.isValid && (retry.validTo !== null || retry.issuer !== null))
+      )
+    ) {
+      confirmedIssue = true;
+      inspection = retry; // Use latest confirmed inspection data
+    } else {
+      logger.info(
+        `✅ SSL warning for "${monitor.name}" was not confirmed on retry. Suppressed false alarm.`
+      );
+    }
+  }
 
   const [inserted] = await db
     .insert(sslChecks)
@@ -44,13 +82,9 @@ export async function executeSslCheck(
     })
     .returning();
 
-  // If certificate is expiring in <= 30 days or is invalid/expired, dispatch notification
-  if (
-    (inspection.daysRemaining !== null && inspection.daysRemaining <= 30) ||
-    !inspection.isValid
-  ) {
+  if (confirmedIssue) {
     logger.warn(
-      `⚠️ SSL warning for monitor ${monitor.name}: ${inspection.errorMessage || `${inspection.daysRemaining} days left`}`
+      `⚠️ Confirmed SSL alert for monitor ${monitor.name}: ${inspection.errorMessage || `${inspection.daysRemaining} days left`}`
     );
     dispatchSslExpiryAlert({
       monitorId: monitor.id,

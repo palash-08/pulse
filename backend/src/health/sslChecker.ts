@@ -11,6 +11,7 @@ export interface SslCheckResult {
   daysRemaining: number | null;
   protocol: string | null;
   errorMessage: string | null;
+  isConnectionError?: boolean;
 }
 
 function formatCertEntity(entity: tls.Certificate | any): string | null {
@@ -41,6 +42,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
       daysRemaining: null,
       protocol: null,
       errorMessage: err.message || "Invalid URL or DNS resolution failed",
+      isConnectionError: true,
     };
   }
 
@@ -54,6 +56,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
       daysRemaining: null,
       protocol: null,
       errorMessage: "SSL inspection is only applicable for HTTPS targets",
+      isConnectionError: true,
     };
   }
 
@@ -93,6 +96,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
               daysRemaining: null,
               protocol,
               errorMessage: "No TLS certificate presented by server",
+              isConnectionError: true,
             });
           }
 
@@ -127,6 +131,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
             daysRemaining,
             protocol,
             errorMessage,
+            isConnectionError: false,
           });
         } catch (err: any) {
           socket.destroy();
@@ -139,6 +144,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
             daysRemaining: null,
             protocol: null,
             errorMessage: `TLS inspection error: ${err.message}`,
+            isConnectionError: true,
           });
         }
       }
@@ -157,6 +163,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
         daysRemaining: null,
         protocol: null,
         errorMessage: `TLS connection timed out after ${timeoutMs}ms`,
+        isConnectionError: true,
       });
     });
 
@@ -173,6 +180,7 @@ export async function inspectSslCertificate(rawUrl: string): Promise<SslCheckRes
         daysRemaining: null,
         protocol: null,
         errorMessage: err.message || "Failed to establish TLS connection",
+        isConnectionError: true,
       });
     });
   });
