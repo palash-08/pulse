@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
-import { useTheme } from "../../context/ThemeContext.js";
+import { useTheme } from "../../context/useTheme.js";
 
 export interface ThemeToggleProps {
   className?: string;

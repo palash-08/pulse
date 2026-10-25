@@ -69,9 +69,21 @@
     --surface-raised: #18181b;
   }
 
+  html {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
   body {
     margin: 0;
     min-height: 100vh;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  .dark html,
+  html.dark,
+  [data-theme="dark"] {
     background-color: var(--background);
     color: var(--foreground);
   }
@@ -84,7 +96,8 @@
   }
 }
 
-/* Disable element transitions during snapshotting so the view-transition captures clean, instantaneous dark/light styles */
+/* Disable element transitions during snapshotting and animation so the view-transition captures clean, instantaneous dark/light styles */
+html.theme-transitioning,
 html.theme-transitioning *,
 html.theme-transitioning *::before,
 html.theme-transitioning *::after {
@@ -92,29 +105,30 @@ html.theme-transitioning *::after {
 }
 
 /* View Transitions API Rocket Theme Switch */
+::view-transition-image-pair(root) {
+  isolation: auto;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 
-/* Light to Dark (default): New snapshot sits on top, initially clipped off-screen to prevent black flash */
+/* Light to Dark (default): New dark snapshot sits on top */
 ::view-transition-old(root) {
   z-index: 1;
 }
 ::view-transition-new(root) {
   z-index: 2;
-  clip-path: path("M 0 0 Z");
 }
 
 /* Dark to Light (reverse): Old dark snapshot sits on top and shrinks away */
 html.theme-reverse::view-transition-old(root) {
   z-index: 2;
-  clip-path: none;
 }
 html.theme-reverse::view-transition-new(root) {
   z-index: 1;
-  clip-path: none;
 }
 
 /* Rocket layer view-transition isolation so it's not frozen inside snapshots */

@@ -15,7 +15,7 @@ import { getDashboard } from "../api/dashboard.js";
 import { runManualCheck } from "../api/monitors.js";
 import { DashboardData } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";
-import { useTheme } from "../context/ThemeContext.js";
+import { useTheme } from "../context/useTheme.js";
 import { StatusBadge } from "../components/ui/StatusBadge.js";
 import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";

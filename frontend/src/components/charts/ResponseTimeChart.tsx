@@ -8,7 +8,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { ChartBucket } from "../../api/types.js";
-import { useTheme } from "../../context/ThemeContext.js";
+import { useTheme } from "../../context/useTheme.js";
 
 interface ResponseTimeChartProps {
   data: ChartBucket[];

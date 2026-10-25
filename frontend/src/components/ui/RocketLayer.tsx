@@ -107,7 +107,7 @@ export function RocketLayer({
           width: 30,
           height: 36,
           // Isolates the rocket into its own View Transition group so it's not frozen inside the snapshot
-          viewTransitionName: isAnimating ? "rocket" : "none",
+          viewTransitionName: "rocket",
           mixBlendMode: "difference",
           willChange: "transform",
         }}
