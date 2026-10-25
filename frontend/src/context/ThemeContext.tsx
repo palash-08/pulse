@@ -1,22 +1,13 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
 import { getFlamePath } from "../lib/flamePath.js";
 import { RocketLayer } from "../components/ui/RocketLayer.js";
+import { Theme, ThemeContext } from "./useTheme.js";
 
-export type Theme = "light" | "dark";
-
-export interface ThemeContextType {
-  theme: Theme;
-  isDark: boolean;
-  isAnimating: boolean;
-  toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
-}
+export type { Theme } from "./useTheme.js";
 
 const STORAGE_KEY = "pulse-theme";
 const ANIMATION_DURATION = 1100; // 1.1s duration matching the flame physics
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -62,6 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<"light-to-dark" | "dark-to-light">("light-to-dark");
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentAnimationRef = useRef<Animation | null>(null);
 
   const persistTheme = (newTheme: Theme) => {
     try {
@@ -77,11 +69,41 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(newTheme);
   };
 
+  const cancelActiveAnimations = () => {
+    if (currentAnimationRef.current) {
+      try {
+        currentAnimationRef.current.cancel();
+      } catch {
+        // Ignore
+      }
+      currentAnimationRef.current = null;
+    }
+    // Cancel any orphaned view-transition animations on documentElement
+    try {
+      if (typeof document !== "undefined" && document.documentElement) {
+        document.documentElement.getAnimations().forEach((anim) => {
+          const pseudo = (anim.effect as KeyframeEffect)?.pseudoElement;
+          if (pseudo && pseudo.includes("view-transition")) {
+            anim.cancel();
+          }
+        });
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   const toggleTheme = useCallback(() => {
     if (isAnimating) return;
 
-    const nextTheme: Theme = theme === "dark" ? "light" : "dark";
-    const isDarkToLight = theme === "dark";
+    // Derive state directly from actual DOM presence of .dark to prevent any React/DOM drift
+    const currentlyDark =
+      typeof document !== "undefined"
+        ? document.documentElement.classList.contains("dark")
+        : theme === "dark";
+
+    const nextTheme: Theme = currentlyDark ? "light" : "dark";
+    const isDarkToLight = currentlyDark;
     const direction = isDarkToLight ? "dark-to-light" : "light-to-dark";
 
     const prefersReducedMotion =
@@ -90,6 +112,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // 1. Accessibility: Skip rocket and animation when prefers-reduced-motion is enabled
     if (prefersReducedMotion) {
+      cancelActiveAnimations();
       document.documentElement.classList.add("theme-fade-transition");
       applyThemeToDOM(nextTheme);
       setThemeState(nextTheme);
@@ -108,6 +131,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Fallback: If browser doesn't support View Transitions, switch with 300ms fade and fly the rocket
     if (!hasViewTransition) {
+      cancelActiveAnimations();
       setIsAnimating(true);
       setAnimationDirection(direction);
       document.documentElement.classList.add("theme-fade-transition");
@@ -126,6 +150,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 3. View Transitions API: Animate clip-path with the flame shape
+    // Cancel any previous animations first so lingering forward-fills don't clip snapshots
+    cancelActiveAnimations();
+
     setIsAnimating(true);
     setAnimationDirection(direction);
 
@@ -134,6 +161,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (isDarkToLight) {
       document.documentElement.classList.add("theme-reverse");
+    } else {
+      document.documentElement.classList.remove("theme-reverse");
     }
 
     const width = window.innerWidth;
@@ -155,8 +184,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       `;
     } else {
       dynamicStyle.textContent = `
-        ::view-transition-old(root) { z-index: 2; clip-path: none; }
-        ::view-transition-new(root) { z-index: 1; clip-path: none; }
+        ::view-transition-old(root) { z-index: 2; }
+        ::view-transition-new(root) { z-index: 1; }
       `;
     }
 
@@ -186,31 +215,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       persistTheme(nextTheme);
     });
 
-    transition.ready
-      .then(() => {
-        document.documentElement.classList.remove("theme-transitioning");
-        try {
-          document.documentElement.animate(activeKeyframes, {
-            duration: ANIMATION_DURATION,
-            easing: "linear",
-            pseudoElement: targetPseudoElement,
-            fill: "forwards",
-          });
-        } catch (err) {
-          console.warn("View transition flame animation failed to run on pseudo-element:", err);
-        }
-      })
-      .catch(() => {
-        document.documentElement.classList.remove("theme-transitioning");
-      });
-
     const cleanup = () => {
+      cancelActiveAnimations();
       document.documentElement.classList.remove("theme-reverse");
       document.documentElement.classList.remove("theme-transitioning");
       const s = document.getElementById("pulse-vt-dynamic");
       s?.remove();
       setIsAnimating(false);
     };
+
+    transition.ready
+      .then(() => {
+        try {
+          const anim = document.documentElement.animate(activeKeyframes, {
+            duration: ANIMATION_DURATION,
+            easing: "linear",
+            pseudoElement: targetPseudoElement,
+            fill: "forwards",
+          });
+          currentAnimationRef.current = anim;
+        } catch (err) {
+          console.warn("View transition flame animation failed to run on pseudo-element:", err);
+        }
+      })
+      .catch(() => {
+        cleanup();
+      });
 
     // Safety timeout to guarantee unblocking if transition takes too long
     if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
@@ -241,12 +271,4 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       />
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme(): ThemeContextType {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
 }

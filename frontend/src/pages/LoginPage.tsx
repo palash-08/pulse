@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserCheck, Sparkles, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.js";
-import { useTheme } from "../context/ThemeContext.js";
+import { useTheme } from "../context/useTheme.js";
 import { ApiClientError } from "../api/client.js";
 import { ThemeToggle } from "../components/ui/ThemeToggle.js";
 import { DotShader } from "../components/ui/dot-shader.js";
