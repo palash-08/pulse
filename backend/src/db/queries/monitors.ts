@@ -100,6 +100,7 @@ export async function getMonitorStatus(
 
 /**
  * Scheduler query: finds monitors that are due for checking.
+ * Direct query on monitors + health_checks index for sub-millisecond precision.
  */
 export async function getDueMonitors(limit: number = 50): Promise<
   Array<{ monitorId: number; url: string; checkIntervalSeconds: number; name: string }>
@@ -110,11 +111,22 @@ export async function getDueMonitors(limit: number = 50): Promise<
     check_interval_seconds: number;
     name: string;
   }>(sql`
-    SELECT monitor_id, url, check_interval_seconds, name
-    FROM v_monitor_status
-    WHERE last_checked_at IS NULL
-       OR last_checked_at + make_interval(secs => check_interval_seconds) <= now()
-    ORDER BY last_checked_at NULLS FIRST
+    SELECT
+      m.id AS monitor_id,
+      m.url,
+      m.check_interval_seconds,
+      m.name
+    FROM monitors m
+    LEFT JOIN LATERAL (
+      SELECT hc.checked_at
+      FROM health_checks hc
+      WHERE hc.monitor_id = m.id
+      ORDER BY hc.checked_at DESC, hc.id DESC
+      LIMIT 1
+    ) lc ON true
+    WHERE lc.checked_at IS NULL
+       OR lc.checked_at + make_interval(secs => m.check_interval_seconds) <= now()
+    ORDER BY lc.checked_at NULLS FIRST
     LIMIT ${limit};
   `);
 

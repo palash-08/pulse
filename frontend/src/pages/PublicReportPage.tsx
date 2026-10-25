@@ -5,6 +5,7 @@ import { getPublicReportInfo, submitPublicReport } from "../api/publicReport.js"
 import { StatusBadge } from "../components/ui/StatusBadge.js";
 import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
+import { ThemeToggle } from "../components/ui/ThemeToggle.js";
 
 export function PublicReportPage() {
   const { token } = useParams<{ token: string }>();
@@ -57,7 +58,10 @@ export function PublicReportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-neutral-950 flex items-center justify-center relative transition-colors duration-200">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <ThemeToggle />
+        </div>
         <Spinner size="lg" />
       </div>
     );
@@ -65,7 +69,10 @@ export function PublicReportPage() {
 
   if (error || !info) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-neutral-950 flex items-center justify-center p-4 relative transition-colors duration-200">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <ThemeToggle />
+        </div>
         <div className="max-w-md w-full">
           <ErrorState message={error || "Invalid problem report link"} />
         </div>
@@ -74,29 +81,34 @@ export function PublicReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 sm:px-6 py-12">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col justify-center items-center px-4 sm:px-6 py-12 relative transition-colors duration-200">
+      {/* Top Corner Dark/Light Mode Toggle */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <ThemeToggle />
+      </div>
+
       <div className="max-w-md w-full mx-auto space-y-8">
         {/* Header in Editorial Serif */}
         <div className="text-center space-y-3">
-          <h1 className="text-5xl sm:text-6xl font-serif tracking-tight text-neutral-900 font-bold select-none">
+          <h1 className="text-5xl sm:text-6xl font-serif tracking-tight text-neutral-900 dark:text-white font-bold select-none transition-colors">
             pulse
           </h1>
           <div className="space-y-1 pt-1">
-            <p className="text-lg sm:text-xl text-neutral-900 font-medium tracking-tight">
+            <p className="text-lg sm:text-xl text-neutral-900 dark:text-neutral-100 font-medium tracking-tight">
               Report a Problem
             </p>
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Submit feedback directly to the service owner.
             </p>
           </div>
         </div>
 
         {/* Target Monitor Status Card */}
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm p-6 sm:p-8 space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm p-6 sm:p-8 space-y-6 transition-colors">
+          <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
             <div>
               <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-semibold">Service Name</div>
-              <div className="text-base font-semibold text-neutral-900">{info.monitorName}</div>
+              <div className="text-base font-semibold text-neutral-900 dark:text-white">{info.monitorName}</div>
             </div>
             <div>
               <StatusBadge status={info.status} size="md" />
@@ -105,10 +117,10 @@ export function PublicReportPage() {
 
           {submitted ? (
             <div className="text-center py-6 space-y-4">
-              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto" />
               <div className="space-y-1">
-                <h2 className="text-base font-semibold text-neutral-900">Thank you for your report!</h2>
-                <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
+                <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Thank you for your report!</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto leading-relaxed">
                   Your feedback has been delivered to the service owner. We appreciate you taking the time to notify us.
                 </p>
               </div>
@@ -117,7 +129,7 @@ export function PublicReportPage() {
                   setSubmitted(false);
                   setDescription("");
                 }}
-                className="mt-2 text-xs font-semibold text-neutral-900 hover:underline"
+                className="mt-2 text-xs font-semibold text-neutral-900 dark:text-white hover:underline"
               >
                 Submit another report
               </button>
@@ -125,13 +137,13 @@ export function PublicReportPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   Issue Category
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
-                  className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 bg-white transition-colors"
+                  className="w-full h-11 px-4 rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 focus:border-neutral-900 dark:focus:border-neutral-100 focus:outline-none text-xs text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-800 transition-colors"
                 >
                   <option value="down">Site / API is Down (Cannot reach)</option>
                   <option value="slow">Service is Extremely Slow</option>
@@ -141,7 +153,7 @@ export function PublicReportPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   Description of Problem *
                 </label>
                 <textarea
@@ -152,7 +164,7 @@ export function PublicReportPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Please describe what you observed (minimum 10 characters)..."
-                  className="w-full p-4 rounded-2xl border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 placeholder:text-neutral-400 transition-colors"
+                  className="w-full p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 focus:border-neutral-900 dark:focus:border-neutral-100 focus:outline-none text-xs text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 bg-white dark:bg-neutral-800 transition-colors"
                 />
                 <div className="text-[10px] text-neutral-400 mt-1 flex justify-between px-1">
                   <span>Minimum 10 characters</span>
@@ -161,7 +173,7 @@ export function PublicReportPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   Your Email (Optional)
                 </label>
                 <input
@@ -169,7 +181,7 @@ export function PublicReportPage() {
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="Optional, in case the team needs more details"
-                  className="w-full h-11 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none text-xs text-neutral-900 placeholder:text-neutral-400 transition-colors"
+                  className="w-full h-11 px-4 rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 focus:border-neutral-900 dark:focus:border-neutral-100 focus:outline-none text-xs text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 bg-white dark:bg-neutral-800 transition-colors"
                 />
               </div>
 
@@ -188,7 +200,7 @@ export function PublicReportPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-12 rounded-full bg-neutral-900 hover:bg-black text-white text-sm font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50"
+                className="w-full h-12 rounded-full bg-neutral-900 hover:bg-black text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 text-sm font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50"
               >
                 {submitting ? "Sending Report..." : "Submit Problem Report"}
               </button>
@@ -199,4 +211,3 @@ export function PublicReportPage() {
     </div>
   );
 }
-

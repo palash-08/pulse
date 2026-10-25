@@ -7,10 +7,11 @@ import { getDueMonitors } from "../db/queries/monitors.js";
 import { executeCheck } from "./checkService.js";
 import { executeSslCheck } from "./sslService.js";
 
-const MAX_CONCURRENT_CHECKS = 5;
+const MAX_CONCURRENT_CHECKS = 10;
 const activeChecks = new Set<number>();
 let schedulerTimer: NodeJS.Timeout | null = null;
 let lastDailyMaintenance = 0;
+let isTicking = false;
 
 async function runDailyMaintenance(): Promise<void> {
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -34,7 +35,7 @@ async function runDailyMaintenance(): Promise<void> {
       .select({ id: monitors.id })
       .from(monitors)
       .where(sql`${monitors.url} ~* '^https://'`);
-    
+
     for (const hm of httpsMonitors) {
       executeSslCheck(hm.id).catch((err) =>
         logger.error(`Daily SSL sweep failed on monitor ${hm.id}:`, err)
@@ -47,10 +48,16 @@ async function runDailyMaintenance(): Promise<void> {
 }
 
 async function schedulerTick(): Promise<void> {
-  try {
-    await runDailyMaintenance();
+  if (isTicking) return;
+  isTicking = true;
 
-    // Find due monitors
+  try {
+    // Run daily maintenance asynchronously so it never stalls periodic ping checks
+    runDailyMaintenance().catch((err) =>
+      logger.error("❌ Daily maintenance error:", err)
+    );
+
+    // Find due monitors based on (last_checked_at + check_interval_seconds <= now())
     const dueMonitors = await getDueMonitors(50);
     if (dueMonitors.length === 0) return;
 
@@ -76,6 +83,8 @@ async function schedulerTick(): Promise<void> {
     }
   } catch (err) {
     logger.error("Scheduler tick error:", err);
+  } finally {
+    isTicking = false;
   }
 }
 
@@ -85,10 +94,10 @@ export function startScheduler(): void {
     return;
   }
 
-  logger.info(`⏰ Starting in-process scheduler (interval: ${env.SCHEDULER_TICK_SECONDS}s)`);
+  logger.info(`⏰ Starting in-process scheduler (precision tick: ${env.SCHEDULER_TICK_SECONDS}s)`);
   schedulerTimer = setInterval(schedulerTick, env.SCHEDULER_TICK_SECONDS * 1000);
-  // Run an initial tick after a 2-second delay
-  setTimeout(schedulerTick, 2000).unref();
+  // Run an initial tick after a 1-second delay
+  setTimeout(schedulerTick, 1000).unref();
 }
 
 export function stopScheduler(): void {

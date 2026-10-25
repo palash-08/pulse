@@ -46,8 +46,10 @@ export function IncidentsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">Incidents History</h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-white tracking-tight transition-colors">
+            Incidents History
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             Downtime events automatically generated and resolved by PostgreSQL triggers
           </p>
         </div>
@@ -65,8 +67,8 @@ export function IncidentsPage() {
                 }}
                 className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
                   isSelected
-                    ? "bg-neutral-900 text-white shadow-xs"
-                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
+                    ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xs"
+                    : "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 }`}
               >
                 {st}
@@ -90,10 +92,10 @@ export function IncidentsPage() {
           }
         />
       ) : (
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-xs overflow-hidden transition-colors">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-neutral-200 text-xs">
-              <thead className="bg-neutral-50/75 text-neutral-500 text-[11px] font-semibold uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-xs">
+              <thead className="bg-neutral-50/75 dark:bg-neutral-800/60 text-neutral-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th scope="col" className="px-6 py-3.5 text-left">Incident</th>
                   <th scope="col" className="px-6 py-3.5 text-left">Status</th>
@@ -103,56 +105,56 @@ export function IncidentsPage() {
                   <th scope="col" className="px-6 py-3.5 text-left">First Error</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 bg-white">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                 {incidents.map((inc) => (
-                  <tr key={inc.id} className="hover:bg-neutral-50/50 transition-colors">
+                  <tr key={inc.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         to={`/monitors/${inc.monitorId}`}
-                        className="font-medium text-neutral-900 hover:underline"
+                        className="font-medium text-neutral-900 dark:text-white hover:underline"
                       >
                         {inc.monitorName}
                       </Link>
-                      <div className="text-[11px] text-neutral-400">
+                      <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
                         Incident #{inc.id} &bull; {inc.failedChecks} failed checks
                       </div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       {inc.status === "open" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 animate-pulse">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           Open Outage
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60">
                           <CheckCircle className="w-3.5 h-3.5" />
                           Resolved
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 dark:text-neutral-400 font-mono">
                       {new Date(inc.startedAt).toLocaleString()}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 dark:text-neutral-400 font-mono">
                       {inc.resolvedAt ? (
                         new Date(inc.resolvedAt).toLocaleString()
                       ) : (
-                        <span className="text-rose-600 font-medium flex items-center gap-1">
+                        <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" /> Ongoing
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-neutral-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-neutral-800 dark:text-neutral-200">
                       {inc.durationSeconds >= 60
                         ? `${Math.floor(inc.durationSeconds / 60)}m ${inc.durationSeconds % 60}s`
                         : `${inc.durationSeconds}s`}
                     </td>
 
-                    <td className="px-6 py-4 text-xs text-rose-600 font-mono max-w-xs">
+                    <td className="px-6 py-4 text-xs text-rose-600 dark:text-rose-400 font-mono max-w-xs">
                       <span className="truncate block max-w-[260px]" title={inc.firstError || undefined}>{inc.firstError || "—"}</span>
                     </td>
                   </tr>

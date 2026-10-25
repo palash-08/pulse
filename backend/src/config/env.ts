@@ -11,7 +11,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(16),
   FRONTEND_ORIGIN: z.string().url().default("http://localhost:5173"),
   SCHEDULER_ENABLED: z.coerce.boolean().default(true),
-  SCHEDULER_TICK_SECONDS: z.coerce.number().default(15),
+  SCHEDULER_TICK_SECONDS: z.coerce.number().default(1),
   CHECK_TIMEOUT_MS: z.coerce.number().default(10000),
   SSRF_ALLOWLIST: z.string().default("localhost:4100,127.0.0.1:4100"),
   PUBLIC_BASE_URL: z.string().url().default("http://localhost:5173"),
