@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus, Search, Play, ExternalLink, Trash2, Edit3 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Plus, Search, Play, ExternalLink, Trash2, Edit3, X } from "lucide-react";
 import { listMonitors, runManualCheck, deleteMonitor } from "../api/monitors.js";
 import { MonitorSummary } from "../api/types.js";
 import { usePolling } from "../hooks/usePolling.js";
@@ -10,8 +11,11 @@ import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
 import { Pagination } from "../components/ui/Pagination.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
+import { LockInput } from "@/components/ui/lock-input";
+import { Loader } from "@/components/ui/loader";
 
 export function MonitorsPage() {
+  const navigate = useNavigate();
   const [monitors, setMonitors] = useState<MonitorSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -85,15 +89,19 @@ export function MonitorsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Actions */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-neutral-900 tracking-tight">Monitors</h1>
-          <p className="text-sm text-neutral-500 mt-1">Manage and inspect all configured website and API monitors</p>
+          <h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-white tracking-tight transition-colors">
+            Monitors
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Manage and inspect all configured website and API monitors
+          </p>
         </div>
         <Link
           to="/monitors/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-full text-xs font-medium hover:bg-black shadow-sm transition-all active:scale-[0.99]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 shadow-sm transition-all active:scale-[0.99]"
         >
           <Plus className="w-4 h-4" />
           Add Monitor
@@ -103,43 +111,70 @@ export function MonitorsPage() {
       {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         {/* Search */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
+        <div className="flex-1 w-full">
+          <LockInput
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search monitors by name or URL..."
-            className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-neutral-200 rounded-full placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-900 transition-colors"
+            leftIcon={<Search className="w-4 h-4" />}
+            rightIcon={
+              search ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : undefined
+            }
+            className="h-10 text-xs rounded-full bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
           />
         </div>
 
         {/* Status Filters */}
         <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          {(["all", "up", "down", "unknown"] as const).map((st) => {
-            const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
-            return (
-              <button
-                key={st}
-                onClick={() => {
-                  setPage(1);
-                  setStatusFilter(st === "all" ? undefined : st);
-                }}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
-                  isSelected
-                    ? "bg-neutral-900 text-white shadow-xs"
-                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-                }`}
-              >
-                {st}
-              </button>
-            );
-          })}
+          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full text-xs font-medium transition-colors">
+            {(["all", "up", "down", "unknown"] as const).map((st) => {
+              const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setPage(1);
+                    setStatusFilter(st === "all" ? undefined : st);
+                  }}
+                  className={`relative px-3.5 py-1 text-xs font-medium rounded-full capitalize transition-colors select-none ${
+                    isSelected
+                      ? "text-white dark:text-neutral-900"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span className="relative z-10">{st}</span>
+                  {isSelected && (
+                    <motion.div
+                      layoutId="monitors-status-filter-active-pill"
+                      className="absolute inset-0 bg-neutral-900 dark:bg-white rounded-full shadow-xs"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {loading && monitors.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+              <Loader variant="arc" size={12} className="text-neutral-600 dark:text-neutral-300" />
+              Updating...
+            </span>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      {loading ? (
+      {loading && monitors.length === 0 ? (
         <Spinner size="lg" />
       ) : error ? (
         <ErrorState message={error} onRetry={() => fetchMonitors()} />
@@ -150,17 +185,17 @@ export function MonitorsPage() {
           action={
             <Link
               to="/monitors/new"
-              className="px-4 py-2 bg-neutral-900 text-white rounded-full text-xs font-medium hover:bg-black"
+              className="px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 transition-colors"
             >
               Add Monitor
             </Link>
           }
         />
       ) : (
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xs overflow-hidden">
+        <div className={`bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-xs overflow-hidden transition-all duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-neutral-200 text-xs">
-              <thead className="bg-neutral-50/75 text-neutral-500 text-[11px] font-semibold uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-xs">
+              <thead className="bg-neutral-50/75 dark:bg-neutral-800/60 text-neutral-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th scope="col" className="px-6 py-3.5 text-left">Monitor</th>
                   <th scope="col" className="px-6 py-3.5 text-left">Status</th>
@@ -170,80 +205,96 @@ export function MonitorsPage() {
                   <th scope="col" className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 bg-white">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                 {monitors.map((m) => (
-                  <tr key={m.id} className="hover:bg-neutral-50/50 transition-colors">
+                  <tr
+                    key={m.id}
+                    onClick={() => navigate(`/monitors/${m.id}`)}
+                    className="hover:bg-neutral-50/75 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer group"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/monitors/${m.id}`}
-                          className="font-medium text-neutral-900 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium text-neutral-900 dark:text-white group-hover:underline transition-colors"
                         >
                           {m.name}
                         </Link>
                         {m.isSimulatedTarget && (
-                          <span className="text-[10px] bg-neutral-100 text-neutral-600 border border-neutral-200 px-2 py-0.5 rounded-full font-mono">
+                          <span className="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 px-2 py-0.5 rounded-full font-mono">
                             Simulated
                           </span>
                         )}
                         {m.recentReports15m > 0 && (
-                          <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
                             {m.recentReports15m} reports
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-neutral-500 truncate max-w-xs">{m.url}</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-xs">{m.url}</div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={m.status} size="sm" />
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-600 dark:text-neutral-300 font-mono">
                       {m.checkIntervalSeconds}s
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-500 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-500 dark:text-neutral-400 font-mono">
                       {m.lastCheckedAt ? new Date(m.lastCheckedAt).toLocaleTimeString() : "Never"}
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-xs max-w-xs">
                       {m.lastResponseTimeMs !== null ? (
-                        <span className="font-mono text-neutral-800">{m.lastResponseTimeMs} ms</span>
+                        <span className="font-mono text-neutral-800 dark:text-neutral-200">{m.lastResponseTimeMs} ms</span>
                       ) : m.lastError ? (
-                        <span className="text-rose-600 truncate block max-w-[200px]" title={m.lastError}>{m.lastError}</span>
+                        <span className="text-rose-600 dark:text-rose-400 truncate block max-w-[200px]" title={m.lastError}>{m.lastError}</span>
                       ) : (
-                        <span className="text-neutral-400">&mdash;</span>
+                        <span className="text-neutral-400 dark:text-neutral-500">&mdash;</span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium space-x-1.5">
+                    <td
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium space-x-1.5"
+                    >
                       <button
-                        onClick={() => handleRunCheck(m.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRunCheck(m.id);
+                        }}
                         disabled={runningChecks.has(m.id)}
                         title="Run check now"
-                        className="p-1.5 text-neutral-500 hover:text-neutral-900 rounded-full hover:bg-neutral-100 disabled:opacity-40"
+                        className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 transition-colors"
                       >
                         <Play className={`w-3.5 h-3.5 ${runningChecks.has(m.id) ? "animate-spin" : ""}`} />
                       </button>
                       <Link
                         to={`/monitors/${m.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         title="View details & charts"
-                        className="inline-block p-1.5 text-neutral-500 hover:text-neutral-900 rounded-full hover:bg-neutral-100"
+                        className="inline-block p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
                       <Link
                         to={`/monitors/${m.id}/edit`}
+                        onClick={(e) => e.stopPropagation()}
                         title="Edit settings"
-                        className="inline-block p-1.5 text-neutral-500 hover:text-neutral-900 rounded-full hover:bg-neutral-100"
+                        className="inline-block p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </Link>
                       <button
-                        onClick={() => setDeleteTargetId(m.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTargetId(m.id);
+                        }}
                         title="Delete monitor"
-                        className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-full hover:bg-rose-50"
+                        className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -253,7 +304,6 @@ export function MonitorsPage() {
               </tbody>
             </table>
           </div>
-
 
           <Pagination
             page={page}
