@@ -1,6 +1,6 @@
-# Pulse: 11-Step Lab Demonstration Script
+# Pulse: 14-Step Lab Demonstration Script
 
-This reproducible script demonstrates all core requirements and DBMS showcase features of **Pulse** using the local demo target on port 4100.
+This reproducible script demonstrates all core requirements, DBMS showcase features, and advanced capabilities of **Pulse** using the local demo target on port 4100.
 
 ---
 
@@ -27,3 +27,6 @@ This reproducible script demonstrates all core requirements and DBMS showcase fe
 | **9** | While in Guest mode: add 2 more monitors (total 3) | Third monitor rejected with `403 GUEST_LIMIT_REACHED`; UI prompts to register | Trigger `GL001` error in API log |
 | **10** | Log in as `other@pulse.test` (password: `password123!`), attempt to access demo user's monitor ID | Receives HTTP 404 (not 403, preventing resource enumeration) | Network tab 404 response |
 | **11** | Enable public report link on Shop API, open in private window, submit 3 problem reports | Reports accepted with 201; Owner dashboard shows new reports badge; Shop API shows warning badge | `SELECT * FROM problem_reports;` and `recent_reports_15m` in `v_monitor_status` |
+| **12** | Create a monitor for a public HTTPS site (e.g., `https://github.com`) and open its detail page | **SSL Certificate Card** shows valid status, issuer (e.g. DigiCert), expiry date, protocol, and days remaining | `SELECT * FROM ssl_checks WHERE monitor_id = ...;` and `v_monitor_ssl_status` |
+| **13** | Go to **Account Settings -> Alerts**, add a Discord Webhook URL and click **Send Test Notification** | Discord channel immediately receives a formatted embed alert with color code and monitor metadata | `SELECT * FROM alert_logs;` confirms delivered status |
+| **14** | Click the **Theme Toggle** (Sun/Moon) in the top-right navigation pill | Native View Transitions API plays smooth **rocket launch** animation, revealing the opposite theme through a dynamic flame aperture clipping mask without flash | Chrome DevTools Animations inspector |
