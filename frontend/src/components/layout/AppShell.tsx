@@ -32,14 +32,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content with top padding if not guest (guest banner already adds pt-20) */}
       <main
-        className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${
-          user?.isGuest ? "py-6 sm:py-8" : "pt-20 sm:pt-24 pb-8"
+        className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 ${
+          user?.isGuest ? "py-6 sm:py-8" : "pt-20 sm:pt-24"
         }`}
       >
         {children}
       </main>
 
-      <footer className="border-t border-neutral-200 dark:border-neutral-800/80 py-6 text-center text-xs text-neutral-400 dark:text-neutral-500 bg-white dark:bg-neutral-900/60 transition-colors">
+      <footer className="border-t border-neutral-200 dark:border-neutral-800/80 py-6 mb-16 md:mb-0 text-center text-xs text-neutral-400 dark:text-neutral-500 bg-white dark:bg-neutral-900/60 transition-colors">
         <span className="font-serif font-bold text-neutral-700 dark:text-neutral-300">pulse</span> &bull; The heartbeat of your infrastructure &bull; DBMS Group Mini Project
       </footer>
     </div>
