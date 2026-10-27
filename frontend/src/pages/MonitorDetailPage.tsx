@@ -40,6 +40,7 @@ import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
 import { Pagination } from "../components/ui/Pagination.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 import { Loader } from "@/components/ui/loader";
 import { ResponseTimeChart } from "../components/charts/ResponseTimeChart.js";
 import { UptimeChart } from "../components/charts/UptimeChart.js";
@@ -367,14 +368,14 @@ export function MonitorDetailPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <button
+          <FlairButton
             onClick={handleRunCheck}
             disabled={checking}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-medium rounded-full hover:bg-black dark:hover:bg-neutral-200 disabled:opacity-50 shadow-sm transition-all active:scale-[0.99]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-900 dark:border-white text-xs font-medium disabled:opacity-50 shadow-sm transition-all active:scale-[0.99]"
           >
             <Play className={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`} />
             {checking ? "Checking..." : "Run Check Now"}
-          </button>
+          </FlairButton>
           <Link
             to={`/monitors/${monitorId}/edit`}
             className="inline-flex items-center gap-1 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-medium rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
@@ -466,13 +467,13 @@ export function MonitorDetailPage() {
                   value={`${window.location.origin}/report/${monitor.reportToken}`}
                   className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-full px-3 py-1.5 text-[11px] font-mono text-neutral-600 dark:text-neutral-300 flex-1 select-all outline-none"
                 />
-                <button
+                <FlairButton
                   onClick={handleCopyReportLink}
-                  className="px-3 py-1.5 bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-200 text-white dark:text-neutral-900 rounded-full text-[11px] font-medium flex items-center gap-1 shadow-xs transition-colors"
+                  className="px-3 py-1.5 rounded-full border border-neutral-900 dark:border-white text-[11px] font-medium shadow-xs transition-all active:scale-[0.99]"
                 >
                   {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   {copiedLink ? "Copied" : "Copy"}
-                </button>
+                </FlairButton>
               </div>
             ) : (
               <p className="text-neutral-400 dark:text-neutral-500 text-[11px] leading-relaxed">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Play, ExternalLink, Trash2, Edit3, X } from "lucide-react";
 import { listMonitors, runManualCheck, deleteMonitor } from "../api/monitors.js";
 import { MonitorSummary } from "../api/types.js";
@@ -11,6 +11,7 @@ import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
 import { Pagination } from "../components/ui/Pagination.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 import { LockInput } from "@/components/ui/lock-input";
 import { Loader } from "@/components/ui/loader";
 
@@ -99,13 +100,14 @@ export function MonitorsPage() {
             Manage and inspect all configured website and API monitors
           </p>
         </div>
-        <Link
+        <FlairButton
+          as={Link}
           to="/monitors/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 shadow-sm transition-all active:scale-[0.99]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-neutral-900 dark:border-white text-xs font-medium shadow-xs transition-all active:scale-[0.99]"
         >
           <Plus className="w-4 h-4" />
           Add Monitor
-        </Link>
+        </FlairButton>
       </div>
 
       {/* Filter Toolbar */}
@@ -135,7 +137,7 @@ export function MonitorsPage() {
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+        <div className="relative self-start sm:self-auto">
           <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full text-xs font-medium transition-colors">
             {(["all", "up", "down", "unknown"] as const).map((st) => {
               const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
@@ -164,12 +166,22 @@ export function MonitorsPage() {
               );
             })}
           </div>
-          {loading && monitors.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-              <Loader variant="arc" size={12} className="text-neutral-600 dark:text-neutral-300" />
-              Updating...
-            </span>
-          )}
+          <AnimatePresence>
+            {loading && monitors.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full right-0 pt-1.5 pointer-events-none z-10"
+              >
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-xs text-neutral-600 dark:text-neutral-300 shadow-xs border border-neutral-200/60 dark:border-neutral-700/60 whitespace-nowrap">
+                  <Loader variant="arc" size={12} className="text-neutral-600 dark:text-neutral-300" />
+                  Updating...
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -183,12 +195,14 @@ export function MonitorsPage() {
           title="No monitors match your criteria"
           description="Try adjusting your search query or filter settings, or add a new monitor."
           action={
-            <Link
+            <FlairButton
+              as={Link}
               to="/monitors/new"
-              className="px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-900 dark:border-white text-xs font-medium transition-all shadow-xs active:scale-[0.99]"
             >
+              <Plus className="w-4 h-4" />
               Add Monitor
-            </Link>
+            </FlairButton>
           }
         />
       ) : (

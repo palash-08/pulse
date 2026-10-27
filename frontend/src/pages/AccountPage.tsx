@@ -4,6 +4,7 @@ import { User, KeyRound, Trash2, Sparkles, ShieldCheck, Radio, Settings } from "
 import { useAuth } from "../auth/AuthContext.js";
 import { updateAccount, changePassword, deleteAccount } from "../api/account.js";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 import { DiscordAlertsSection } from "../components/alerts/DiscordAlertsSection.js";
 
 export function AccountPage() {
@@ -128,19 +129,44 @@ export function AccountPage() {
             Upgrade to a permanent registered account to save your monitors and alert webhooks indefinitely.
           </p>
           <div className="pt-1">
-            <Link
+            <FlairButton
+              as={Link}
               to="/register"
-              className="inline-block px-5 py-2.5 bg-white text-neutral-900 rounded-full text-xs font-semibold hover:bg-neutral-100 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-neutral-900 dark:border-white text-xs font-semibold shadow-sm transition-all active:scale-[0.99]"
             >
               Upgrade & Keep Existing Monitors &rarr;
-            </Link>
+            </FlairButton>
           </div>
         </div>
       )}
 
       {/* Tab: Discord Alerts */}
       {activeTab === "alerts" && (
-        <DiscordAlertsSection />
+        user?.isGuest ? (
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-indigo-200/80 dark:border-indigo-900/60 p-6 sm:p-8 space-y-3 transition-colors shadow-xs">
+            <div className="flex items-center gap-2 font-serif font-bold text-neutral-900 dark:text-white text-lg">
+              <Radio className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+              Discord Alerts Require a Registered Account
+            </div>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              Guest sessions are temporary and cannot manage webhooks after logout. Create a free account to enable Discord alerts — your monitors will transfer automatically.
+            </p>
+            <div className="pt-1">
+              <FlairButton
+                as={Link}
+                to="/register"
+                fill="#6366f1"
+                textFrom="#6366f1"
+                textTo="#ffffff"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-indigo-500/80 dark:border-indigo-500/80 bg-indigo-50/50 dark:bg-indigo-950/30 text-xs font-medium shadow-sm transition-all active:scale-[0.99]"
+              >
+                Register to Enable Alerts &rarr;
+              </FlairButton>
+            </div>
+          </div>
+        ) : (
+          <DiscordAlertsSection />
+        )
       )}
 
       {/* Tab: Profile & Security */}
@@ -260,12 +286,15 @@ export function AccountPage() {
               Permanently delete your account and all associated monitors, health checks, incident logs, problem reports, and Discord alert webhooks.
               This action cannot be undone.
             </p>
-            <button
+            <FlairButton
               onClick={() => setShowDeleteModal(true)}
-              className="mt-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-full text-xs shadow-sm transition-colors active:scale-[0.99]"
+              fill="#dc2626"
+              textFrom="#dc2626"
+              textTo="#ffffff"
+              className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-rose-600/80 dark:border-rose-500/80 bg-rose-50/50 dark:bg-rose-950/30 text-xs font-medium shadow-sm transition-all active:scale-[0.99]"
             >
               Delete Account
-            </button>
+            </FlairButton>
           </div>
         </div>
       )}

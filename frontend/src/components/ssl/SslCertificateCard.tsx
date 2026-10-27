@@ -11,6 +11,7 @@ import {
   Globe,
 } from "lucide-react";
 import { SslCheck } from "../../api/types.js";
+import { FlairButton } from "../ui/FlairButton.js";
 
 interface SslCertificateCardProps {
   isHttps: boolean;
@@ -102,14 +103,14 @@ export function SslCertificateCard({
           </div>
         </div>
 
-        <button
+        <FlairButton
           onClick={onRefreshSsl}
           disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-medium rounded-full shadow-xs transition-all active:scale-[0.99] disabled:opacity-50 self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-900 dark:border-white text-xs font-medium shadow-xs transition-all active:scale-[0.99] disabled:opacity-50 self-start sm:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Inspecting TLS..." : "Check Certificate Now"}
-        </button>
+        </FlairButton>
       </div>
 
       {successMessage && (

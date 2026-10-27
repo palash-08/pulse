@@ -18,6 +18,7 @@ import {
   listAlertLogs,
 } from "../../api/alerts.js";
 import { AlertContact, AlertLog } from "../../api/types.js";
+import { FlairButton } from "../ui/FlairButton.js";
 import { Spinner } from "../ui/Spinner.js";
 
 export function DiscordAlertsSection() {
@@ -148,13 +149,13 @@ export function DiscordAlertsSection() {
           </p>
         </div>
 
-        <button
+        <FlairButton
           onClick={() => setShowAddForm(!showAddForm)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 transition-all shadow-xs self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-900 dark:border-white text-xs font-medium transition-all shadow-xs self-start sm:self-auto active:scale-[0.99]"
         >
           <Plus className="w-3.5 h-3.5" />
           {showAddForm ? "Cancel" : "Add Discord Webhook"}
-        </button>
+        </FlairButton>
       </div>
 
       {/* Add Webhook Form */}

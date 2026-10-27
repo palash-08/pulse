@@ -20,6 +20,7 @@ import { StatusBadge } from "../components/ui/StatusBadge.js";
 import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 import { Meteors } from "@/components/ui/meteors";
 
 export function DashboardPage() {
@@ -90,13 +91,14 @@ export function DashboardPage() {
             Real-time status overview and recent health checks
           </p>
         </div>
-        <Link
+        <FlairButton
+          as={Link}
           to="/monitors/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 shadow-sm transition-all active:scale-[0.99]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-neutral-900 dark:border-white text-xs font-medium shadow-xs transition-all active:scale-[0.99]"
         >
           <Plus className="w-4 h-4" />
           Add Monitor
-        </Link>
+        </FlairButton>
       </div>
 
       {/* Metrics Row */}
@@ -193,12 +195,14 @@ export function DashboardPage() {
               title="No monitors configured"
               description="Add your first website or API endpoint to start automated uptime checks."
               action={
-                <Link
+                <FlairButton
+                  as={Link}
                   to="/monitors/new"
-                  className="px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-xs font-medium hover:bg-black dark:hover:bg-neutral-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-900 dark:border-white text-xs font-medium transition-all shadow-xs active:scale-[0.99]"
                 >
+                  <Plus className="w-4 h-4" />
                   Create Monitor
-                </Link>
+                </FlairButton>
               }
             />
           ) : (
