@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Play, ExternalLink, Trash2, Edit3, X } from "lucide-react";
 import { listMonitors, runManualCheck, deleteMonitor } from "../api/monitors.js";
@@ -14,9 +14,11 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog.js";
 import { FlairButton } from "../components/ui/FlairButton.js";
 import { LockInput } from "@/components/ui/lock-input";
 import { Loader } from "@/components/ui/loader";
+import JellyRadio from "./JellyRadio";
 
 export function MonitorsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [monitors, setMonitors] = useState<MonitorSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -26,6 +28,21 @@ export function MonitorsPage() {
   const [error, setError] = useState<string | null>(null);
   const [runningChecks, setRunningChecks] = useState<Set<number>>(new Set());
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [highlightedMonitorId, setHighlightedMonitorId] = useState<number | null>(null);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
+
+  useEffect(() => {
+    const createdId = (location.state as any)?.createdMonitorId;
+    if (createdId) {
+      setHighlightedMonitorId(Number(createdId));
+      setLiveAnnouncement("Monitor created");
+      const timer = setTimeout(() => {
+        setHighlightedMonitorId(null);
+        navigate(".", { replace: true, state: null });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, navigate]);
 
   const fetchMonitors = async (isBackground = false) => {
     try {
@@ -138,34 +155,21 @@ export function MonitorsPage() {
 
         {/* Status Filters */}
         <div className="relative self-start sm:self-auto">
-          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full text-xs font-medium transition-colors">
-            {(["all", "up", "down", "unknown"] as const).map((st) => {
-              const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
-              return (
-                <button
-                  key={st}
-                  onClick={() => {
-                    setPage(1);
-                    setStatusFilter(st === "all" ? undefined : st);
-                  }}
-                  className={`relative px-3.5 py-1 text-xs font-medium rounded-full capitalize transition-colors select-none ${
-                    isSelected
-                      ? "text-white dark:text-neutral-900"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                  }`}
-                >
-                  <span className="relative z-10">{st}</span>
-                  {isSelected && (
-                    <motion.div
-                      layoutId="monitors-status-filter-active-pill"
-                      className="absolute inset-0 bg-neutral-900 dark:bg-white rounded-full shadow-xs"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <JellyRadio
+            items={[
+              { value: "all", label: "All" },
+              { value: "up", label: "Up" },
+              { value: "down", label: "Down" },
+              { value: "unknown", label: "Unknown" }
+            ]}
+            value={statusFilter ?? "all"}
+            onChange={(val) => {
+              setPage(1);
+              setStatusFilter(val === "all" ? undefined : (val as "up" | "down" | "unknown"));
+            }}
+            size="sm"
+            ariaLabel="Monitor status filter"
+          />
           <AnimatePresence>
             {loading && monitors.length > 0 && (
               <motion.div
@@ -327,6 +331,11 @@ export function MonitorsPage() {
           />
         </div>
       )}
+
+      {/* Screen reader live announcement */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {liveAnnouncement}
+      </div>
 
       {/* Delete Confirmation Modal */}
       <ConfirmDialog

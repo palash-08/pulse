@@ -39,7 +39,7 @@ const SIZES = {
   lg: { chip: 44, row: 40, font: 14 }
 };
 const PAD = 4;
-const GAP = 1;
+const GAP = 2;
 const MENU_GAP = 6;
 const DEFAULT_OPTIONS: GlideSelectOption[] = [
   { value: 'One', label: 'One' },
@@ -126,7 +126,14 @@ export default function GlideSelect({
     const p = pillRef.current;
     if (p) {
       p.style.transition = 'none';
-      p.style.transform = `translateY(${Math.max(0, selected) * step}px)`;
+      const selIdx = Math.max(0, selected);
+      const targetRow = el.querySelector(`[data-index="${selIdx}"]`) as HTMLElement | null;
+      if (targetRow) {
+        p.style.transform = `translateY(${targetRow.offsetTop}px)`;
+        p.style.height = `${targetRow.offsetHeight}px`;
+      } else {
+        p.style.transform = `translateY(${selIdx * step}px)`;
+      }
       p.style.opacity = '0';
       void p.offsetHeight;
       p.style.transition = '';
@@ -142,7 +149,13 @@ export default function GlideSelect({
     }
     const jump = instant.current || p.style.opacity !== '1';
     p.style.transitionDuration = jump ? '0ms, 150ms' : '';
-    p.style.transform = `translateY(${active * step}px)`;
+    const targetRow = menuRef.current?.querySelector(`[data-index="${active}"]`) as HTMLElement | null;
+    if (targetRow) {
+      p.style.transform = `translateY(${targetRow.offsetTop}px)`;
+      p.style.height = `${targetRow.offsetHeight}px`;
+    } else {
+      p.style.transform = `translateY(${active * step}px)`;
+    }
     p.style.opacity = '1';
     instant.current = false;
   }, [active, phase, step]);
@@ -227,6 +240,14 @@ export default function GlideSelect({
   useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   const rowAt = (y: number) => {
+    const list = menuRef.current?.querySelector('.glide-select__list');
+    if (list) {
+      const rows = list.querySelectorAll('[data-index]');
+      for (let i = 0; i < rows.length; i++) {
+        const rect = rows[i].getBoundingClientRect();
+        if (y >= rect.top && y <= rect.bottom) return i;
+      }
+    }
     const s = scrub.current;
     if (!s) return null;
     const i = Math.floor((y - s.top - PAD) / step);
