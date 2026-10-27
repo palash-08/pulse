@@ -9,6 +9,7 @@ import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
 import { Pagination } from "../components/ui/Pagination.js";
 import { FlairButton } from "../components/ui/FlairButton.js";
+import JellyRadio from "./JellyRadio";
 
 export function ReportsPage() {
   const [reports, setReports] = useState<ProblemReport[]>([]);
@@ -87,26 +88,25 @@ export function ReportsPage() {
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
-          {(["all", "new", "acknowledged", "resolved", "dismissed"] as const).map((st) => {
-            const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
-            return (
-              <button
-                key={st}
-                onClick={() => {
-                  setPage(1);
-                  setStatusFilter(st === "all" ? undefined : st);
-                }}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
-                  isSelected
-                    ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xs"
-                    : "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {st}
-              </button>
-            );
-          })}
+        <div className="self-start sm:self-auto overflow-x-auto max-w-full">
+          <JellyRadio
+            items={[
+              { value: "all", label: "All" },
+              { value: "new", label: "New" },
+              { value: "acknowledged", label: "Acknowledged" },
+              { value: "resolved", label: "Resolved" },
+              { value: "dismissed", label: "Dismissed" }
+            ]}
+            value={statusFilter ?? "all"}
+            onChange={(val) => {
+              setPage(1);
+              setStatusFilter(
+                val === "all" ? undefined : (val as "new" | "acknowledged" | "resolved" | "dismissed")
+              );
+            }}
+            size="sm"
+            ariaLabel="Problem report status filter"
+          />
         </div>
       </div>
 

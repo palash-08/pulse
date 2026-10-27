@@ -8,6 +8,7 @@ import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
 import { Pagination } from "../components/ui/Pagination.js";
+import JellyRadio from "./JellyRadio";
 
 export function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -55,26 +56,21 @@ export function IncidentsPage() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          {(["all", "open", "resolved"] as const).map((st) => {
-            const isSelected = st === "all" ? statusFilter === undefined : statusFilter === st;
-            return (
-              <button
-                key={st}
-                onClick={() => {
-                  setPage(1);
-                  setStatusFilter(st === "all" ? undefined : st);
-                }}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-full capitalize transition-colors ${
-                  isSelected
-                    ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xs"
-                    : "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {st}
-              </button>
-            );
-          })}
+        <div className="self-start sm:self-auto">
+          <JellyRadio
+            items={[
+              { value: "all", label: "All" },
+              { value: "open", label: "Open" },
+              { value: "resolved", label: "Resolved" }
+            ]}
+            value={statusFilter ?? "all"}
+            onChange={(val) => {
+              setPage(1);
+              setStatusFilter(val === "all" ? undefined : (val as "open" | "resolved"));
+            }}
+            size="sm"
+            ariaLabel="Incident status filter"
+          />
         </div>
       </div>
 
