@@ -8,6 +8,7 @@ import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
 import { EmptyState } from "../components/ui/EmptyState.js";
 import { Pagination } from "../components/ui/Pagination.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 
 export function ReportsPage() {
   const [reports, setReports] = useState<ProblemReport[]>([]);
@@ -172,17 +173,17 @@ export function ReportsPage() {
                   </button>
                 )}
 
-                {r.status !== "resolved" && (
-                  <button
+                {r.status !== "resolved" && r.status !== "dismissed" && (
+                  <FlairButton
                     onClick={() => handleUpdateStatus(r.id, "resolved")}
                     disabled={updatingId === r.id}
-                    className="px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-200 rounded-full flex items-center gap-1 transition-colors shadow-xs"
+                    className="px-3 py-1.5 rounded-full border border-neutral-900 dark:border-white text-xs font-medium shadow-xs transition-all active:scale-[0.99] disabled:opacity-50"
                   >
                     <Check className="w-3 h-3" /> Resolve
-                  </button>
+                  </FlairButton>
                 )}
 
-                {r.status !== "dismissed" && (
+                {r.status !== "dismissed" && r.status !== "resolved" && (
                   <button
                     onClick={() => handleUpdateStatus(r.id, "dismissed")}
                     disabled={updatingId === r.id}

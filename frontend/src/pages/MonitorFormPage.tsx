@@ -4,11 +4,25 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { createMonitor, getMonitor, updateMonitor } from "../api/monitors.js";
 import { ApiClientError } from "../api/client.js";
 import { Spinner } from "../components/ui/Spinner.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
+import GlideSelect from './GlideSelect';
+import { useTheme } from "../context/useTheme.js";
+
+const intervalOptions = [
+  { value: 30, label: "Every 30 seconds", tag: "Fastest" },
+  { value: 60, label: "Every 1 minute", tag: "Recommended" },
+  { value: 120, label: "Every 2 minutes", tag: "Standard" },
+  { value: 300, label: "Every 5 minutes", tag: "Light" },
+  { value: 600, label: "Every 10 minutes", tag: "Infrequent" },
+  { value: 1800, label: "Every 30 minutes", tag: "Hourly" },
+  { value: 3600, label: "Every 1 hour", tag: "Slow" },
+];
 
 export function MonitorFormPage() {
   const { id } = useParams<{ id?: string }>();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -156,19 +170,27 @@ export function MonitorFormPage() {
             <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
               Check Interval (Seconds)
             </label>
-            <select
+            <GlideSelect
+              options={intervalOptions}
               value={checkIntervalSeconds}
-              onChange={(e) => setCheckIntervalSeconds(Number(e.target.value))}
-              className="w-full h-11 px-4 rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 focus:border-neutral-900 dark:focus:border-neutral-100 focus:outline-none text-xs text-neutral-900 dark:text-white bg-white dark:bg-neutral-800 transition-colors"
-            >
-              <option value={30}>Every 30 seconds</option>
-              <option value={60}>Every 1 minute (Recommended)</option>
-              <option value={120}>Every 2 minutes</option>
-              <option value={300}>Every 5 minutes</option>
-              <option value={600}>Every 10 minutes</option>
-              <option value={1800}>Every 30 minutes</option>
-              <option value={3600}>Every 1 hour</option>
-            </select>
+              onChange={(val) => setCheckIntervalSeconds(Number(val))}
+              ariaLabel="Check interval"
+              showTags
+              accentColor={isDark ? "#f5f5f5" : "#18181b"}
+              surfaceColor={isDark ? "#27272a" : "#ffffff"}
+              highlightColor={isDark ? "#3f3f46" : "#f4f4f5"}
+              textColor={isDark ? "#f5f5f5" : "#18181b"}
+              size="lg"
+              radius={16}
+              menuWidth="100%"
+              className="w-full"
+              placement="bottom"
+              align="left"
+              popDuration={180}
+              glideDuration={220}
+              rememberPosition
+              disabled={saving}
+            />
           </div>
 
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800">
@@ -178,13 +200,13 @@ export function MonitorFormPage() {
             >
               Cancel
             </Link>
-            <button
+            <FlairButton
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 text-xs font-medium text-white dark:text-neutral-900 bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-200 rounded-full shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-full border border-neutral-900 dark:border-white text-xs font-medium shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Monitor"}
-            </button>
+            </FlairButton>
           </div>
         </form>
       </div>

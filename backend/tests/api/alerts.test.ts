@@ -121,4 +121,31 @@ describe("Alerts & Discord Notification Dispatcher API", () => {
 
     expect(checkRes.status).toBe(404);
   });
+
+  it("rejects guest users from managing alert contacts", async () => {
+    const guestRes = await request(app)
+      .post("/api/auth/guest")
+      .expect(201);
+
+    const rawGuestCookie = guestRes.headers["set-cookie"];
+    const guestCookie = Array.isArray(rawGuestCookie) ? rawGuestCookie : [String(rawGuestCookie)];
+
+    const listRes = await request(app)
+      .get("/api/alerts/contacts")
+      .set("Cookie", guestCookie);
+
+    expect(listRes.status).toBe(401);
+    expect(JSON.stringify(listRes.body.error)).toContain("registered account");
+
+    const createRes = await request(app)
+      .post("/api/alerts/contacts")
+      .set("Cookie", guestCookie)
+      .send({
+        name: "Guest Webhook",
+        webhookUrl: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_secret",
+      });
+
+    expect(createRes.status).toBe(401);
+    expect(JSON.stringify(createRes.body.error)).toContain("registered account");
+  });
 });

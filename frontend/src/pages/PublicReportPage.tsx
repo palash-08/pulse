@@ -6,6 +6,7 @@ import { StatusBadge } from "../components/ui/StatusBadge.js";
 import { Spinner } from "../components/ui/Spinner.js";
 import { ErrorState } from "../components/ui/ErrorState.js";
 import { ThemeToggle } from "../components/ui/ThemeToggle.js";
+import { FlairButton } from "../components/ui/FlairButton.js";
 
 export function PublicReportPage() {
   const { token } = useParams<{ token: string }>();
@@ -197,13 +198,13 @@ export function PublicReportPage() {
                 />
               </div>
 
-              <button
+              <FlairButton
                 type="submit"
                 disabled={submitting}
-                className="w-full h-12 rounded-full bg-neutral-900 hover:bg-black text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 text-sm font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50"
+                className="w-full h-12 rounded-full border border-neutral-900 dark:border-white text-sm font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 flex items-center justify-center"
               >
                 {submitting ? "Sending Report..." : "Submit Problem Report"}
-              </button>
+              </FlairButton>
             </form>
           )}
         </div>

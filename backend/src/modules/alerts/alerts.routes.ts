@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { validate } from "../../middleware/validate.js";
-import { requireUser } from "../../middleware/requireUser.js";
+import { requireRegisteredUser } from "../../middleware/requireUser.js";
 import {
   createAlertContactSchema,
   updateAlertContactSchema,
@@ -18,7 +18,7 @@ import {
 
 const router = Router();
 
-router.use(requireUser);
+router.use(requireRegisteredUser);
 
 router.get("/contacts", listContactsHandler);
 router.post("/contacts", validate({ body: createAlertContactSchema }), createContactHandler);
