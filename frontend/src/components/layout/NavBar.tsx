@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.js";
 import { ThemeToggle } from "../ui/ThemeToggle.js";
+import { useLaunch } from "../launch/LaunchProvider.js";
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: "/", end: true, icon: LayoutDashboard },
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
 
 export function NavBar() {
   const { user, logout } = useAuth();
+  const { registerNavTarget } = useLaunch();
   const navigate = useNavigate();
 
   const { scrollY } = useScroll();
@@ -92,6 +94,8 @@ export function NavBar() {
                   key={item.to}
                   to={item.to}
                   end={item.end}
+                  ref={item.to === "/monitors" ? (el) => registerNavTarget("monitors", el) : undefined}
+                  data-nav={item.to === "/monitors" ? "monitors" : undefined}
                   className={({ isActive }) =>
                     `relative px-3.5 py-1 text-[14px] font-medium transition-colors duration-200 rounded-full select-none ${
                       isActive
